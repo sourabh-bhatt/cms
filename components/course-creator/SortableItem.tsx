@@ -146,7 +146,7 @@ export function SortableItem({ item, onRemove, onSelect, onUpdate, onAddChild }:
 
                     <button
                         onClick={() => onRemove(item.id)}
-                        className="p-2 hover:bg-red-50 rounded-lg text-purple-300 hover:text-red-500 transition-colors"
+                        className="p-2 hover:bg-red-50 rounded-lg text-red-500 hover:text-red-600 transition-colors"
                     >
                         <Trash2 className="w-5 h-5" />
                     </button>
@@ -272,7 +272,7 @@ export function SortableItem({ item, onRemove, onSelect, onUpdate, onAddChild }:
                     </button>
                     <button
                         onClick={() => onRemove(item.id)}
-                        className="text-gray-300 hover:text-red-500 p-1 hover:bg-red-50 rounded"
+                        className="text-red-500 hover:text-red-600 p-1 hover:bg-red-50 rounded"
                     >
                         <Trash2 className="w-4 h-4" />
                     </button>
@@ -282,7 +282,7 @@ export function SortableItem({ item, onRemove, onSelect, onUpdate, onAddChild }:
             {/* Item Body (Rich Editor) */}
             {isExpanded && (
                 <div className="p-4 bg-white cursor-auto" onClick={(e) => e.stopPropagation()}>
-                    <label className="block text-xs font-bold text-gray-400 uppercase mb-2">Content Body</label>
+                    <label className="block text-xs font-bold text-black uppercase mb-2">Content Body</label>
                     <textarea
                         value={localContent}
                         onChange={handleContentChange}
