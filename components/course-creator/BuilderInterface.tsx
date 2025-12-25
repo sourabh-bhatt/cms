@@ -15,7 +15,9 @@ import {
     DropAnimation,
 } from '@dnd-kit/core';
 import { createPortal } from 'react-dom';
-import { FileText, Save, FolderOpen, Plus, AlignLeft, LayoutTemplate, X, GripVertical, PanelLeftOpen } from 'lucide-react';
+import { FileText, Save, FolderOpen, Plus, AlignLeft, LayoutTemplate, X, GripVertical, PanelLeftOpen, Archive } from 'lucide-react';
+import JSZip from 'jszip';
+import { saveAs } from 'file-saver';
 import { arrayMove } from '@dnd-kit/sortable';
 
 import { FileNode } from '@/lib/file-system';
@@ -43,11 +45,18 @@ const dropAnimation: DropAnimation = {
     }),
 };
 
+// Helper to strip HTML comments/metadata
+const stripMetadata = (content: string) => {
+    return content.replace(/<!--[\s\S]*?-->/g, '').trim();
+};
+
 export default function BuilderInterface({ files, approvedFiles }: { files: FileNode[], approvedFiles: FileNode[] }) {
     const [courseItems, setCourseItems] = useState<CourseItem[]>([]);
     const [activeDragItem, setActiveDragItem] = useState<{ type: 'source' | 'course', data: any } | null>(null);
     const [previewContent, setPreviewContent] = useState<string | null>(null);
     const [previewTitle, setPreviewTitle] = useState<string | null>(null);
+    const [previewItemId, setPreviewItemId] = useState<string | null>(null);
+    const [linkData, setLinkData] = useState<{ title: string; url: string } | null>(null);
     const [mounted, setMounted] = useState(false);
     const [savedCourses, setSavedCourses] = useState<string[]>([]);
     const [isLoading, setIsLoading] = useState(false);
@@ -99,6 +108,103 @@ export default function BuilderInterface({ files, approvedFiles }: { files: File
     // isLoading and savedCourses were declared above, removing duplicates
     const [showLoadMenu, setShowLoadMenu] = useState(false);
     const [showSetupModal, setShowSetupModal] = useState(false);
+
+    // Live Preview Generation
+    useEffect(() => {
+        // Live Item Preview Sync
+        // If we are previewing a specific item (by ID), keep its content in sync with edits
+        if (previewItemId) {
+            const activeItem = courseItems.find((item: CourseItem) => {
+                // Search top level
+                if (item.id === previewItemId) return true;
+                // Search groups
+                if (item.children) {
+                    return item.children.some(child => child.id === previewItemId);
+                }
+                return false;
+            });
+
+            // If we found the item and it's not a group, sync content
+            if (activeItem) {
+                // But wait, find() returns the top level item. If it's a child, we need to find the child object.
+                let target: CourseItem | undefined;
+
+                // Recursive search helper
+                const findItem = (items: CourseItem[], id: string): CourseItem | undefined => {
+                    for (const i of items) {
+                        if (i.id === id) return i;
+                        if (i.children) {
+                            const found = findItem(i.children, id);
+                            if (found) return found;
+                        }
+                    }
+                };
+                target = findItem(courseItems, previewItemId);
+
+                if (target && target.type !== 'group') {
+                    // Sync content if available
+                    if (target.content) {
+                        setPreviewContent(stripMetadata(target.content));
+                    } else {
+                        // If content is empty/undefined, it might be initial load. k
+                        // But if we are "syncing", we assume the user might be deleting content.
+                        // So we should respect empty string.
+                        // However, we don't want to overwrite "Loading..." or disk content if we haven't touched it?
+                        // Actually, if we are in this Effect, courseItems CHANGED.
+                        // If the user typed, target.content CHANGED.
+                        // So we should update.
+                        if (target.content === "") {
+                            setPreviewContent("");
+                        }
+                    }
+                }
+            }
+            return; // Don't generate full course preview if checking specific item
+        }
+
+        // Standard Course Preview (Full Syllabus)
+        if (!showPreview || linkData || (previewTitle && previewTitle !== "Course Preview")) {
+            if (previewTitle && previewTitle !== "Course Preview") return;
+        }
+
+        let md = ``;
+        // ... rest of generation logic ...
+        courseItems.forEach(item => {
+            if (item.type === 'group') {
+                md += `### ${item.name}\n\n`;
+                if (item.children) {
+                    item.children.forEach(child => {
+                        md += `#### ${child.name}\n\n`;
+                        if (child.content) {
+                            md += `${child.content}\n\n`;
+                        } else {
+                            md += `*No content*\n\n`;
+                        }
+                    });
+                }
+            } else {
+                // Top level items
+                md += `#### ${item.name}\n\n`;
+                if (item.content) {
+                    md += `${item.content}\n\n`;
+                }
+            }
+        });
+
+        if (courseItems.length === 0) {
+            md = "*Start adding modules and topics to see the course preview.*";
+        }
+
+        // Only update if we are in "Course Preview" mode
+        // We can force this mode if nothing else is selected
+        if (!linkData) {
+            setPreviewContent(md);
+            if (!previewTitle || previewTitle === "Course Preview") {
+                setPreviewTitle("Course Preview");
+            }
+        }
+
+    }, [courseItems, showPreview, linkData, previewTitle, previewItemId]);
 
     // Initial load - if no items, maybe show setup? Or just let user click 'New'
     // For now, let's keep it manual trigger via New Course button
@@ -170,7 +276,8 @@ export default function BuilderInterface({ files, approvedFiles }: { files: File
 
 
     // Link Preview State
-    const [linkData, setLinkData] = useState<{ title: string; url: string } | null>(null);
+
+    // Link Preview State
 
     const handleSelectFile = async (node: FileNode) => {
         // If it's a link, open in new tab immediately
@@ -182,11 +289,6 @@ export default function BuilderInterface({ files, approvedFiles }: { files: File
                     const data = JSON.parse(response.content);
                     if (data.url) {
                         window.open(data.url, '_blank', 'noopener,noreferrer');
-                        // User asked "Change Link click behavior to open in new tab directly".
-                        // Usually implies "instead of preview".
-                        // However, keeping preview might be useful for context.
-                        // But often "direct open" means "action".
-                        // I will OPEN it AND Show it in preview just in case popups are blocked or they want to see it.
                     }
                 }
             } catch (e) {
@@ -197,6 +299,7 @@ export default function BuilderInterface({ files, approvedFiles }: { files: File
         setLinkData(null);
         setPreviewContent(null);
         setPreviewTitle(node.name);
+        setPreviewItemId(null); // Sidebar file not in course yet
 
         try {
             const response = await readFileContent(node.path);
@@ -209,7 +312,8 @@ export default function BuilderInterface({ files, approvedFiles }: { files: File
                         setPreviewContent('Invalid link file format');
                     }
                 } else {
-                    setPreviewContent(response.content);
+                    // Strip metadata for preview
+                    setPreviewContent(stripMetadata(response.content));
                 }
             }
         } catch (e) {
@@ -221,21 +325,33 @@ export default function BuilderInterface({ files, approvedFiles }: { files: File
         if (item.type === 'group') return;
 
         setPreviewTitle(item.name);
-        setPreviewContent("Loading...");
+        setPreviewItemId(item.id);
         setLinkData(null);
+
+        // PRIORITY: Use content from state if available (edited content)
+        if (item.content || item.content === "") {
+            setPreviewContent(stripMetadata(item.content || ""));
+            return;
+        }
+
+        setPreviewContent("Loading...");
 
         try {
             const { getFileContent } = await import('@/app/actions');
-            // item.nodeId holds the original file path
-            // Check if it's a link based on extension if possible, or just try to parse if needed
-            // But usually item.name or nodeId might have extension. 
-            // For course items, we store content in 'content' prop mostly, but looking at 'handleSelectFile', we prefer fetching fresh.
 
-            // If we want to support link preview for dropped items too, we'd need to know source type.
-            // For now, let's just stick to default content loading unless we specifically know it's a link.
-            // But 'handleSelectFile' handles the sidebar selection which is what the user asked for ("click on link").
+            // Check for virtual ID (created in-memory, not on disk yet)
+            // e.g., 'topic-0.123' or any ID without path separators
+            if (!item.nodeId || (!item.nodeId.includes('/') && !item.nodeId.includes('\\'))) {
+                setPreviewContent(""); // Blank start for virtual items
+                return;
+            }
 
             const content = await getFileContent(item.nodeId);
+
+            if (content === 'File not found') {
+                setPreviewContent(""); // Handle graceful failure
+                return;
+            }
 
             if (item.name.toLowerCase().endsWith('.link')) {
                 try {
@@ -246,11 +362,12 @@ export default function BuilderInterface({ files, approvedFiles }: { files: File
                     setPreviewContent("Invalid link file format.");
                 }
             } else {
-                setPreviewContent(content);
+                setPreviewContent(stripMetadata(content));
             }
 
         } catch (e) {
-            setPreviewContent("Failed to load content: " + e);
+            // content might be empty if it's a new item or error
+            setPreviewContent("");
         }
     };
 
@@ -300,51 +417,91 @@ export default function BuilderInterface({ files, approvedFiles }: { files: File
                         // Async fetch content
                         readFileContent(fileNode.path).then((res) => {
                             if (res && res.success && res.content) {
+                                // Strip metadata before injecting
+                                const cleanContent = stripMetadata(res.content);
                                 handleUpdateCourseItem(targetItem.id, {
-                                    content: (targetItem.content || '') + "\n\n" + res.content
+                                    content: (targetItem.content || '') + "\n\n" + cleanContent
                                 });
-                                // Also auto-update word count via the component effect hooks,
-                                // but we should manually trigger it if we want instant feedback in state.
-                                // simpler to let the component effect handle the calculation on next render/edit
                             }
                         });
                     }
                 }
                 // If target is a MODULE/GROUP, or if it's a file but we want to add a new item
-                // For now, we'll just add it as a new item at the top level,
-                // as the current structure doesn't support nested children directly in state.
-                // The user's provided snippet for `handleAddItemToGroup` implies a nested structure
-                // which is not yet implemented in the `courseItems` state.
-                // So, for simplicity and to avoid breaking existing flat structure,
-                // we'll treat dropping on a course-item (even a group) as adding a new top-level item.
                 else {
+                    // Logic to add new item...
+                    // We need to fetch content if we want it to be populated immediately?
+                    // Currently we just set nodeId. 
+                    // Let's pre-fetch content so it's editable immediately.
+
+                    const newItemId = Math.random().toString(36).substr(2, 9);
+
+                    if (fileNode.type === 'file') {
+                        readFileContent(fileNode.path).then(res => {
+                            const initialContent = (res && res.success && res.content) ? stripMetadata(res.content) : "";
+
+                            const newItem: CourseItem = {
+                                id: newItemId,
+                                nodeId: fileNode.id, // Keep ref
+                                name: fileNode.name,
+                                type: fileNode.type,
+                                hours: 0,
+                                children: [],
+                                content: initialContent // Initialize with content
+                            };
+
+                            if (targetItem.type === 'group') {
+                                handleAddItemToGroup(targetItem.id, newItem);
+                            } else {
+                                setCourseItems((items) => [...items, newItem]);
+                            }
+                        });
+                    } else {
+                        // Folder / Other
+                        const newItem: CourseItem = {
+                            id: newItemId,
+                            nodeId: fileNode.id,
+                            name: fileNode.name,
+                            type: fileNode.type,
+                            hours: 0,
+                            children: []
+                        };
+                        if (targetItem.type === 'group') {
+                            handleAddItemToGroup(targetItem.id, newItem);
+                        } else {
+                            setCourseItems((items) => [...items, newItem]);
+                        }
+                    }
+                }
+            }
+            // Dropped on Canvas Root (create new item at bottom)
+            else if (over.id === 'target-canvas') {
+                const newItemId = Math.random().toString(36).substr(2, 9);
+
+                if (fileNode.type === 'file') {
+                    readFileContent(fileNode.path).then(res => {
+                        const initialContent = (res && res.success && res.content) ? stripMetadata(res.content) : "";
+                        const newItem: CourseItem = {
+                            id: newItemId,
+                            nodeId: fileNode.id,
+                            name: fileNode.name,
+                            type: fileNode.type,
+                            hours: 0,
+                            children: [],
+                            content: initialContent
+                        };
+                        setCourseItems((items) => [...items, newItem]);
+                    });
+                } else {
                     const newItem: CourseItem = {
-                        id: Math.random().toString(36).substr(2, 9),
+                        id: newItemId,
                         nodeId: fileNode.id,
                         name: fileNode.name,
                         type: fileNode.type,
                         hours: 0,
                         children: []
                     };
-
-                    if (targetItem.type === 'group') {
-                        handleAddItemToGroup(targetItem.id, newItem);
-                    } else {
-                        setCourseItems((items) => [...items, newItem]);
-                    }
+                    setCourseItems((items) => [...items, newItem]);
                 }
-            }
-            // Dropped on Canvas Root (create new item at bottom)
-            else if (over.id === 'target-canvas') {
-                const newItem: CourseItem = {
-                    id: Math.random().toString(36).substr(2, 9),
-                    nodeId: fileNode.id,
-                    name: fileNode.name,
-                    type: fileNode.type,
-                    hours: 0,
-                    children: []
-                };
-                setCourseItems((items) => [...items, newItem]);
             }
         }
 
@@ -534,6 +691,33 @@ export default function BuilderInterface({ files, approvedFiles }: { files: File
         URL.revokeObjectURL(url);
     };
 
+    const handleExportZip = async () => {
+        const zip = new JSZip();
+
+        for (const item of courseItems) {
+            if (item.type === 'group') {
+                const folderName = item.name.replace(/[^a-z0-9 _-]/gi, '').trim();
+                const folder = zip.folder(folderName);
+                if (folder && item.children) {
+                    for (const child of item.children) {
+                        const fileName = (child.name.replace(/[^a-z0-9 _-]/gi, '').trim() || 'Untitled') + '.md';
+                        // Content: strip metadata before exporting
+                        const content = child.content ? stripMetadata(child.content) : '';
+                        folder.file(fileName, content);
+                    }
+                }
+            } else {
+                // Top level file
+                const fileName = (item.name.replace(/[^a-z0-9 _-]/gi, '').trim() || 'Untitled') + '.md';
+                const content = item.content ? stripMetadata(item.content) : '';
+                zip.file(fileName, content);
+            }
+        }
+
+        const content = await zip.generateAsync({ type: "blob" });
+        saveAs(content, `${courseTitle.replace(/\s+/g, '_')}.zip`);
+    };
+
     const handleSave = () => {
         handleGenerateSyllabus();
     };
@@ -667,6 +851,16 @@ export default function BuilderInterface({ files, approvedFiles }: { files: File
                             <FileText className="w-3 h-3" />
                             Export Application
                         </button>
+
+                        <div className="h-6 w-px bg-gray-200 mx-1"></div>
+
+                        <button
+                            onClick={handleExportZip}
+                            className="px-4 py-1.5 bg-blue-600 text-white text-xs font-semibold rounded hover:bg-blue-700 transition-colors shadow-sm flex items-center gap-2"
+                        >
+                            <Archive className="w-3 h-3" />
+                            Export Zip
+                        </button>
                     </div>
                 </div>
 
@@ -753,7 +947,7 @@ export default function BuilderInterface({ files, approvedFiles }: { files: File
                                 {linkData ? (
                                     <div className="p-6 bg-purple-50 border border-purple-100 rounded-lg flex flex-col gap-4 text-center">
                                         <div className="w-12 h-12 bg-purple-100 rounded-full flex items-center justify-center mx-auto text-purple-600">
-                                            {/* Link Icon hardcoded here since we can't import easily inline without checking imports */}
+                                            {/* Link Icon */}
                                             <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" /><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" /></svg>
                                         </div>
                                         <div>
@@ -775,10 +969,11 @@ export default function BuilderInterface({ files, approvedFiles }: { files: File
                                             components={{
                                                 h1: ({ node, ...props }) => <h1 className="text-2xl font-bold text-gray-900 mb-4 pb-2 border-b border-gray-100" {...props} />,
                                                 h2: ({ node, ...props }) => <h2 className="text-xl font-semibold text-gray-800 mt-6 mb-3" {...props} />,
-                                                h3: ({ node, ...props }) => <h3 className="text-lg font-medium text-gray-800 mt-4 mb-2" {...props} />,
-                                                p: ({ node, ...props }) => <p className="text-gray-600 leading-relaxed mb-4" {...props} />,
-                                                ul: ({ node, ...props }) => <ul className="list-disc list-inside space-y-1 mb-4 text-gray-600" {...props} />,
-                                                ol: ({ node, ...props }) => <ol className="list-decimal list-inside space-y-1 mb-4 text-gray-600" {...props} />,
+                                                h3: ({ node, ...props }) => <h3 className="text-lg font-bold text-black mt-6 mb-2" {...props} />,
+                                                h4: ({ node, ...props }) => <h4 className="text-base font-bold text-black mt-4 mb-2" {...props} />,
+                                                p: ({ node, ...props }) => <p className="text-gray-800 leading-relaxed mb-4" {...props} />,
+                                                ul: ({ node, ...props }) => <ul className="list-disc list-inside space-y-1 mb-4 text-gray-700" {...props} />,
+                                                ol: ({ node, ...props }) => <ol className="list-decimal list-inside space-y-1 mb-4 text-gray-700" {...props} />,
                                                 li: ({ node, ...props }) => <li className="pl-1" {...props} />,
                                                 blockquote: ({ node, ...props }) => <blockquote className="border-l-4 border-purple-200 pl-4 py-1 my-4 italic text-gray-600 bg-gray-50 rounded-r" {...props} />,
                                                 code: ({ node, ...props }) => <code className="bg-gray-100 text-purple-600 px-1 py-0.5 rounded text-sm font-mono" {...props} />,
