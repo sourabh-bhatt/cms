@@ -260,6 +260,16 @@ export function SourceSidebar({ files, approvedFiles, onSelectFile, onClose, tar
         setIsUploading(false);
     };
 
+    const handleNodeClick = (node: FileNode) => {
+        if (activeTab === 'approved' && node.type === 'file') {
+            if (node.name.toLowerCase().endsWith('.pdf') || node.name.toLowerCase().endsWith('.link')) {
+                window.open(`/api/resource/${node.path}`, '_blank');
+                return;
+            }
+        }
+        onSelectFile?.(node);
+    };
+
     return (
         <div className="w-full h-full flex flex-col bg-white z-20 relative">
             <div className="p-3 border-b border-gray-200 bg-gray-50 space-y-3">
@@ -365,10 +375,10 @@ export function SourceSidebar({ files, approvedFiles, onSelectFile, onClose, tar
                 {filteredFiles.length > 0 ? (
                     filteredFiles.map((node) => (
                         node.type === 'folder' ? (
-                            <FolderItem key={node.id} node={node} onSelect={onSelectFile} />
+                            <FolderItem key={node.id} node={node} onSelect={handleNodeClick} />
                         ) : (
                             <div key={node.id} className="group relative hover:bg-green-50 rounded-lg transition-colors flex items-center justify-between pr-2">
-                                <div onClick={() => onSelectFile?.(node)} className="flex-1 min-w-0">
+                                <div onClick={() => handleNodeClick(node)} className="flex-1 min-w-0">
                                     <DraggableFile node={node} />
                                 </div>
                                 <div className="opacity-0 group-hover:opacity-100 transition-opacity flex items-center">
