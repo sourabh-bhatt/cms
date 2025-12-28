@@ -9,14 +9,16 @@ import { FileNode } from '@/lib/file-system';
 interface DraggableProps {
     node: FileNode;
     isOverlay?: boolean;
+    tag?: 'national' | 'state';
 }
 
-export function DraggableFile({ node, isOverlay }: DraggableProps) {
+export function DraggableFile({ node, isOverlay, tag }: DraggableProps) {
     const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
         id: node.id,
         data: {
             type: 'source-item',
             node,
+            tag,
         },
     });
 

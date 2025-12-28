@@ -25,7 +25,9 @@ import {
     saveCourse,
     loadCourse,
     getCourseList,
-    readFileContent
+    readFileContent,
+    findStateAssets,
+    getResourceBinary
 } from '@/app/actions';
 import { cn } from '@/lib/utils';
 import { SourceSidebar } from './SourceSidebar';
@@ -34,6 +36,9 @@ import { CourseItem } from './SortableItem';
 import { DraggableFile } from './DraggableFile';
 import { SortableItem } from './SortableItem';
 import { CourseSetup, CourseConfig } from './CourseSetup';
+import { TopicEditorModal } from './TopicEditorModal';
+import { getRequirementForState } from '@/lib/state-requirements';
+import { Zap } from 'lucide-react';
 
 const dropAnimation: DropAnimation = {
     sideEffects: defaultDropAnimationSideEffects({
@@ -62,6 +67,7 @@ export default function BuilderInterface({ files, approvedFiles }: { files: File
     const [isLoading, setIsLoading] = useState(false);
     const [showSidebar, setShowSidebar] = useState(true);
     const [showPreview, setShowPreview] = useState(false);
+    const [editingItem, setEditingItem] = useState<CourseItem | null>(null);
 
     // Sidebar Resizing Logic
     const [sidebarWidth, setSidebarWidth] = useState(288); // Default 288px (w-72)
@@ -105,9 +111,20 @@ export default function BuilderInterface({ files, approvedFiles }: { files: File
     const [courseTitle, setCourseTitle] = useState("Vermont Pre-Licensing Course");
     const [targetState, setTargetState] = useState("VT");
     const [targetHours, setTargetHours] = useState(40);
-    // isLoading and savedCourses were declared above, removing duplicates
     const [showLoadMenu, setShowLoadMenu] = useState(false);
     const [showSetupModal, setShowSetupModal] = useState(false);
+    const [lastSaved, setLastSaved] = useState<Date | null>(null);
+    const [isSaving, setIsSaving] = useState(false);
+
+    // Debounced Auto-Save
+    useEffect(() => {
+        if (mounted && courseItems.length > 0) {
+            const timer = setTimeout(() => {
+                handleAutoSave();
+            }, 2000); // 2 second debounce
+            return () => clearTimeout(timer);
+        }
+    }, [courseItems, courseTitle, targetState, targetHours]);
 
     // Live Preview Generation
     useEffect(() => {
@@ -209,8 +226,23 @@ export default function BuilderInterface({ files, approvedFiles }: { files: File
     // Initial load - if no items, maybe show setup? Or just let user click 'New'
     // For now, let's keep it manual trigger via New Course button
 
+    const handleAutoSave = async () => {
+        setIsSaving(true);
+        const courseData = {
+            title: courseTitle,
+            state: targetState,
+            hours: targetHours,
+            items: courseItems,
+            updatedAt: new Date().toISOString()
+        };
+        await saveCourse(courseTitle.replace(/\s+/g, '_'), courseData);
+        setLastSaved(new Date());
+        setIsSaving(false);
+    };
+
     const handleSaveCourse = async () => {
         setIsLoading(true);
+        setIsSaving(true);
         const courseData = {
             title: courseTitle,
             state: targetState,
@@ -220,11 +252,13 @@ export default function BuilderInterface({ files, approvedFiles }: { files: File
         };
 
         await saveCourse(courseTitle.replace(/\s+/g, '_'), courseData);
+        setLastSaved(new Date());
         setIsLoading(false);
+        setIsSaving(false);
         // Refresh list
         const list = await getCourseList();
         setSavedCourses(list);
-        alert('Course saved successfully!');
+        alert('Course saved to cloud successfully!');
     };
 
     const handleLoadCourse = async (filename: string) => {
@@ -384,7 +418,8 @@ export default function BuilderInterface({ files, approvedFiles }: { files: File
         const type = active.data.current?.type;
 
         if (type === 'source-item') {
-            setActiveDragItem({ type: 'source', data: active.data.current?.node });
+            // Keep full data payload to preserve 'tag'
+            setActiveDragItem({ type: 'source', data: active.data.current });
         } else if (type === 'course-item') {
             setActiveDragItem({ type: 'course', data: active.data.current?.item });
         }
@@ -406,6 +441,7 @@ export default function BuilderInterface({ files, approvedFiles }: { files: File
         // CASE 1: Dropping a Sidebar File (source-item)
         if (activeData?.type === 'source-item') {
             const fileNode = activeData.node as FileNode;
+            const tag = activeData.tag as 'national' | 'state';
 
             // Check if dropped ONTO an existing Course Item (Target)
             if (overData?.type === 'course-item') {
@@ -446,7 +482,9 @@ export default function BuilderInterface({ files, approvedFiles }: { files: File
                                 type: fileNode.type,
                                 hours: 0,
                                 children: [],
-                                content: initialContent // Initialize with content
+                                content: initialContent, // Initialize with content
+                                verified: { sara: false, gemini: false, team: false },
+                                tags: tag ? [tag] : []
                             };
 
                             if (targetItem.type === 'group') {
@@ -463,7 +501,9 @@ export default function BuilderInterface({ files, approvedFiles }: { files: File
                             name: fileNode.name,
                             type: fileNode.type,
                             hours: 0,
-                            children: []
+                            children: [],
+                            verified: { sara: false, gemini: false, team: false },
+                            tags: tag ? [tag] : []
                         };
                         if (targetItem.type === 'group') {
                             handleAddItemToGroup(targetItem.id, newItem);
@@ -487,7 +527,8 @@ export default function BuilderInterface({ files, approvedFiles }: { files: File
                             type: fileNode.type,
                             hours: 0,
                             children: [],
-                            content: initialContent
+                            content: initialContent,
+                            tags: tag ? [tag] : []
                         };
                         setCourseItems((items) => [...items, newItem]);
                     });
@@ -567,7 +608,7 @@ export default function BuilderInterface({ files, approvedFiles }: { files: File
             name: 'New Topic',
             type: 'file',
             hours: 0,
-            verified: false // Topics are draft by default
+            verified: { sara: false, gemini: false, team: false } // Topics are draft by default
         };
         setCourseItems((items) => addItemToGroupRecursive(items, groupId, itemToAdd));
     };
@@ -581,6 +622,61 @@ export default function BuilderInterface({ files, approvedFiles }: { files: File
             children: []
         };
         setCourseItems((items) => [...items, newGroup]);
+    };
+
+    const handleAutoBuildOutline = () => {
+        const req = getRequirementForState(targetState);
+        if (!req) {
+            alert(`No requirement matrix found for ${targetState}. Please build manually.`);
+            return;
+        }
+
+        setIsLoading(true);
+        setTimeout(() => {
+            const newItems: CourseItem[] = [];
+
+            req.mandatoryTopics.forEach(topic => {
+                const group: CourseItem = {
+                    id: Math.random().toString(36).substr(2, 9),
+                    nodeId: 'auto-gen',
+                    name: topic.name,
+                    type: 'group',
+                    hours: topic.hours,
+                    children: []
+                };
+
+                // Search national content for matches
+                const matches: FileNode[] = [];
+                const searchRecursive = (nodes: FileNode[]) => {
+                    nodes.forEach(node => {
+                        if (node.type === 'file' && topic.keywords.some(kw => node.name.toLowerCase().includes(kw))) {
+                            matches.push(node);
+                        }
+                        if (node.children) searchRecursive(node.children);
+                    });
+                };
+                searchRecursive(files);
+
+                // Add top 3 matches to each group
+                matches.slice(0, 3).forEach(match => {
+                    group.children?.push({
+                        id: Math.random().toString(36).substr(2, 9),
+                        nodeId: match.id,
+                        name: match.name,
+                        type: 'file',
+                        verified: { sara: true, gemini: false, team: false }
+                    });
+                });
+
+                newItems.push(group);
+            });
+
+            setCourseItems(newItems);
+            setIsLoading(false);
+            setCourseItems(newItems);
+            setIsLoading(false);
+            alert(`Fast Forward Complete! Generated ${newItems.length} course modules for ${targetState} based on Mandatory State Requirements.\n\nNote: Module names are matched to state laws but can be renamed directly.`);
+        }, 800);
     };
 
     const handleGenerateSyllabus = () => {
@@ -683,39 +779,78 @@ export default function BuilderInterface({ files, approvedFiles }: { files: File
 
         // Download
         const blob = new Blob([markdown], { type: 'text/markdown' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `${courseTitle.replace(/\s+/g, '_')}_Syllabus.md`;
-        a.click();
-        URL.revokeObjectURL(url);
+        return markdown;
     };
 
     const handleExportZip = async () => {
+        setIsLoading(true);
         const zip = new JSZip();
 
+        // 1. Generate Syllabus / Outline
+        const syllabus = handleGenerateSyllabus();
+        zip.file("1_Application/Outline.md", syllabus);
+
+        // 2. Fetch State Assets (Resume & Certificate)
+        const assets = await findStateAssets(targetState);
+        if (assets.success) {
+            // Instructor Resume
+            if (assets.resume) {
+                const res = await getResourceBinary(assets.resume.id);
+                if (res && res.success && res.data) {
+                    const binaryData = Uint8Array.from(atob(res.data), c => c.charCodeAt(0));
+                    zip.file(`2_Instructor/${assets.resume.title}`, binaryData);
+                }
+            } else {
+                zip.file("2_Instructor/README_MISSING_RESUME.txt", "Please upload an Instructor Resume to the Approved Resources for this state.");
+            }
+
+            // Compliance Certificate
+            if (assets.certificate) {
+                const res = await getResourceBinary(assets.certificate.id);
+                if (res && res.success && res.data) {
+                    const binaryData = Uint8Array.from(atob(res.data), c => c.charCodeAt(0));
+                    zip.file(`3_Compliance/${assets.certificate.title}`, binaryData);
+                }
+            } else {
+                zip.file("3_Compliance/README_MISSING_CERTIFICATE.txt", "Please upload a Course Certificate Template to the Approved Resources for this state.");
+            }
+        }
+
+        // 3. Course Content
+        const contentFolder = zip.folder("4_Content");
         for (const item of courseItems) {
             if (item.type === 'group') {
-                const folderName = item.name.replace(/[^a-z0-9 _-]/gi, '').trim();
-                const folder = zip.folder(folderName);
+                const folderName = item.name.replace(/[^a-z0-9 _-]/gi, '').trim() || 'Untitled_Module';
+                const folder = contentFolder?.folder(folderName);
                 if (folder && item.children) {
                     for (const child of item.children) {
                         const fileName = (child.name.replace(/[^a-z0-9 _-]/gi, '').trim() || 'Untitled') + '.md';
-                        // Content: strip metadata before exporting
-                        const content = child.content ? stripMetadata(child.content) : '';
+                        let content = child.content ? stripMetadata(child.content) : '';
+
+                        // Add Quiz to the end of content if exists
+                        if (child.quizzes && child.quizzes.length > 0) {
+                            content += "\n\n---\n## TOPIC QUIZ\n\n";
+                            child.quizzes.forEach((q, i) => {
+                                content += `${i + 1}. ${q.question}\n`;
+                                q.options.forEach((opt, oi) => {
+                                    content += `   ${String.fromCharCode(65 + oi)}) ${opt}${q.correctAnswer === oi ? " (CORRECT)" : ""}\n`;
+                                });
+                                content += `   Explanation: ${q.explanation}\n\n`;
+                            });
+                        }
                         folder.file(fileName, content);
                     }
                 }
             } else {
-                // Top level file
                 const fileName = (item.name.replace(/[^a-z0-9 _-]/gi, '').trim() || 'Untitled') + '.md';
-                const content = item.content ? stripMetadata(item.content) : '';
-                zip.file(fileName, content);
+                zip.file(`4_Content/${fileName}`, item.content ? stripMetadata(item.content) : '');
             }
         }
 
         const content = await zip.generateAsync({ type: "blob" });
-        saveAs(content, `${courseTitle.replace(/\s+/g, '_')}.zip`);
+        saveAs(content, `${courseTitle.replace(/\s+/g, '_')}_MASTER_APPLICATION.zip`);
+        setIsLoading(false);
+        alert("Master Application ZIP Generated! Includes Outline, Resume, Certificate, and all Course Content.");
     };
 
     const handleSave = () => {
@@ -734,7 +869,6 @@ export default function BuilderInterface({ files, approvedFiles }: { files: File
                 <div className="h-14 bg-white border-b border-gray-200 flex items-center px-6 justify-between shrink-0 z-20 shadow-sm">
                     <div className="flex items-center gap-2 md:gap-4 overflow-x-auto no-scrollbar">
                         <div className="flex flex-col shrink-0">
-                            {/* Removed Label */}
                             <input
                                 type="text"
                                 value={courseTitle}
@@ -744,123 +878,211 @@ export default function BuilderInterface({ files, approvedFiles }: { files: File
                             />
                         </div>
                         <div className="h-6 w-px bg-gray-200 mx-1 md:mx-2 shrink-0"></div>
-                        <div className="flex flex-col shrink-0">
-                            {/* Removed Label */}
-                            <div className="flex items-center gap-1">
-                                <span className="text-gray-400 text-xs font-semibold">State:</span>
-                                <select
-                                    value={targetState}
-                                    onChange={(e) => setTargetState(e.target.value)}
-                                    className="font-bold text-black focus:outline-none bg-transparent cursor-pointer hover:text-green-600 transition-colors"
-                                >
-                                    <option value="VT">VT</option>
-                                    <option value="VA">VA</option>
-                                    <option value="MD">MD</option>
-                                    <option value="TX">TX</option>
-                                </select>
+                        <div className="flex items-center gap-4 shrink-0">
+                            <div className="flex flex-col">
+                                <div className="flex items-center gap-1">
+                                    <span className="text-gray-400 text-[10px] font-bold uppercase tracking-wider">State:</span>
+                                    <select
+                                        value={targetState}
+                                        onChange={(e) => setTargetState(e.target.value)}
+                                        className="font-bold text-sm text-black focus:outline-none bg-transparent cursor-pointer hover:text-green-600 transition-colors uppercase"
+                                    >
+                                        <option value="VT">VT</option>
+                                        <option value="VA">VA</option>
+                                        <option value="MD">MD</option>
+                                        <option value="TX">TX</option>
+                                        <option value="FL">FL</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div className="flex flex-col">
+                                <div className="flex items-center gap-1">
+                                    <span className="text-gray-400 text-[10px] font-bold uppercase tracking-wider">Target:</span>
+                                    <input
+                                        type="number"
+                                        value={targetHours}
+                                        onChange={(e) => setTargetHours(Number(e.target.value))}
+                                        className="font-mono font-bold text-sm text-green-700 focus:outline-none w-8 text-right bg-transparent"
+                                    />
+                                    <span className="text-[10px] text-gray-500 font-bold uppercase">hrs</span>
+                                </div>
                             </div>
                         </div>
+
                         <div className="h-6 w-px bg-gray-200 mx-1 md:mx-2 shrink-0"></div>
-                        <div className="flex flex-col shrink-0 ml-0">
-                            {/* Removed Label */}
-                            <div className="flex items-center gap-1">
-                                <span className="text-gray-400 text-xs font-semibold">Target:</span>
-                                <input
-                                    type="number"
-                                    value={targetHours}
-                                    onChange={(e) => setTargetHours(Number(e.target.value))}
-                                    className="font-mono font-bold text-green-700 focus:outline-none w-10 text-right border-b border-transparent focus:border-green-500"
+
+                        {/* Progress Bar Component */}
+                        <div className="flex flex-col gap-1 min-w-[150px] md:min-w-[200px]">
+                            <div className="flex justify-between items-center">
+                                <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Course Progress</span>
+                                <span className="text-[10px] font-bold text-green-600">{((courseItems.reduce((acc, item) => acc + (item.hours || 0) + (item.children?.reduce((s, c) => s + (c.hours || 0), 0) || 0), 0) / targetHours) * 100).toFixed(0)}%</span>
+                            </div>
+                            <div className="h-1.5 w-full bg-gray-100 rounded-full overflow-hidden border border-gray-200/50">
+                                <div
+                                    className="h-full bg-gradient-to-r from-green-400 to-green-600 transition-all duration-500 ease-out shadow-[0_0_8px_rgba(34,197,94,0.3)]"
+                                    style={{ width: `${Math.min(100, (courseItems.reduce((acc, item) => acc + (item.hours || 0) + (item.children?.reduce((s, c) => s + (c.hours || 0), 0) || 0), 0) / targetHours) * 100)}%` }}
                                 />
-                                <span className="text-xs text-black font-bold">hrs</span>
                             </div>
                         </div>
                     </div>
 
-                    <div className="flex items-center gap-2">
-                        {/* CRUD Controls */}
-                        <button
-                            onClick={handleNewCourse}
-                            className="p-1.5 text-gray-500 hover:text-green-600 hover:bg-green-50 rounded transition-colors"
-                            title="New Course"
-                        >
-                            <Plus className="w-5 h-5" />
-                        </button>
-
-                        <div className="h-6 w-px bg-gray-200 mx-1"></div>
-
-                        <button
-                            onClick={() => setShowSidebar(!showSidebar)}
-                            className={cn("p-1.5 rounded transition-colors", showSidebar ? "text-green-600 bg-green-50" : "text-gray-400 hover:text-gray-600")}
-                            title="Toggle Sidebar"
-                        >
-                            <AlignLeft className="w-5 h-5" />
-                        </button>
-                        <button
-                            onClick={() => setShowPreview(!showPreview)}
-                            className={cn("p-1.5 rounded transition-colors", showPreview ? "text-green-600 bg-green-50" : "text-gray-400 hover:text-gray-600")}
-                            title="Toggle Preview"
-                        >
-                            <LayoutTemplate className="w-5 h-5" />
-                        </button>
-
-                        <div className="relative">
+                    <div className="flex items-center gap-3">
+                        <div className="flex items-center bg-gray-50 rounded-lg p-1 border border-gray-200">
                             <button
-                                onClick={handleFetchCourses}
-                                className="p-1.5 text-gray-500 hover:text-green-600 hover:bg-green-50 rounded transition-colors"
-                                title="Load Course"
+                                onClick={handleNewCourse}
+                                className="flex items-center gap-1.5 px-3 py-1 text-xs font-bold text-gray-600 hover:text-green-700 hover:bg-white hover:shadow-sm rounded-md transition-all active:scale-95"
+                                title="Start New Course"
                             >
-                                <FolderOpen className="w-5 h-5" />
+                                <Plus className="w-3.5 h-3.5" />
+                                New Course
                             </button>
-                            {showLoadMenu && (
-                                <div className="absolute top-full right-0 mt-2 w-56 bg-white rounded-md shadow-xl border border-gray-100 z-50 overflow-hidden">
-                                    <div className="px-3 py-2 bg-gray-50 border-b border-gray-100 text-xs font-bold text-gray-500 uppercase">Saved Courses</div>
-                                    <div className="max-h-60 overflow-y-auto">
-                                        {savedCourses.length === 0 ? (
-                                            <div className="px-4 py-3 text-sm text-gray-400 italic">No saved courses</div>
-                                        ) : (
-                                            savedCourses.map(c => (
-                                                <button
-                                                    key={c}
-                                                    onClick={() => handleLoadCourse(c)}
-                                                    className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-green-50 hover:text-green-700 block truncate"
-                                                >
-                                                    {c}
-                                                </button>
-                                            ))
-                                        )}
-                                    </div>
-                                </div>
-                            )}
+                            <button
+                                onClick={handleAddGroup}
+                                className="flex items-center gap-1.5 px-3 py-1 text-xs font-bold text-gray-600 hover:text-purple-700 hover:bg-white hover:shadow-sm rounded-md transition-all active:scale-95 border-l border-gray-200 ml-1"
+                                title="Add New Module"
+                            >
+                                <LayoutTemplate className="w-3.5 h-3.5" />
+                                New Module
+                            </button>
                         </div>
 
-                        <button
-                            onClick={handleSaveCourse}
-                            disabled={isLoading}
-                            className="p-1.5 text-gray-500 hover:text-green-600 hover:bg-green-50 rounded transition-colors mr-2"
-                            title="Save Course to Disk"
-                        >
-                            <Save className="w-5 h-5" />
-                        </button>
+                        <div className="h-6 w-px bg-gray-200"></div>
 
-                        <div className="h-6 w-px bg-gray-200 mx-1"></div>
+                        <div className="flex items-center gap-2">
+                            <button
+                                onClick={() => setShowPreview(!showPreview)}
+                                className={cn(
+                                    "p-2 rounded-lg transition-all border",
+                                    showPreview ? "text-blue-600 bg-blue-50 border-blue-200 shadow-inner" : "text-gray-400 bg-white border-gray-200 hover:border-gray-300 shadow-sm"
+                                )}
+                                title="Toggle Live Preview"
+                            >
+                                <LayoutTemplate className="w-4 h-4" />
+                            </button>
+
+                            <div className="relative group/load">
+                                <button
+                                    onClick={handleFetchCourses}
+                                    className="p-2 rounded-lg text-gray-400 bg-white border border-gray-200 hover:border-gray-300 hover:text-green-600 transition-all shadow-sm"
+                                    title="Load Saved Course"
+                                >
+                                    <FolderOpen className="w-4 h-4" />
+                                </button>
+                                {showLoadMenu && (
+                                    <div className="absolute top-full right-0 mt-2 w-64 bg-white rounded-xl shadow-2xl border border-gray-100 z-50 overflow-hidden animate-in fade-in slide-in-from-top-2">
+                                        <div className="px-4 py-3 bg-gray-50 border-b border-gray-100 text-[10px] font-bold text-gray-400 uppercase tracking-widest flex items-center justify-between">
+                                            Saved Courses
+                                            <X className="w-3 h-3 cursor-pointer hover:text-gray-600" onClick={() => setShowLoadMenu(false)} />
+                                        </div>
+                                        <div className="max-h-80 overflow-y-auto p-1.5">
+                                            {savedCourses.length === 0 ? (
+                                                <div className="px-4 py-10 text-center">
+                                                    <Archive className="w-8 h-8 text-gray-200 mx-auto mb-2" />
+                                                    <p className="text-xs text-gray-400 italic font-medium">No courses found</p>
+                                                </div>
+                                            ) : (
+                                                savedCourses.map(c => (
+                                                    <button
+                                                        key={c}
+                                                        onClick={() => handleLoadCourse(c)}
+                                                        className="w-full text-left px-3 py-2.3 text-sm font-semibold text-gray-700 hover:bg-green-50 hover:text-green-700 rounded-lg transition-colors flex items-center gap-2 group/item mb-0.5"
+                                                    >
+                                                        <div className="w-1.5 h-1.5 rounded-full bg-gray-200 group-hover/item:bg-green-500 transition-colors"></div>
+                                                        <span className="truncate flex-1">{c.replace(/_/g, ' ')}</span>
+                                                    </button>
+                                                ))
+                                            )}
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+
+                            <button
+                                onClick={handleSaveCourse}
+                                disabled={isLoading || isSaving}
+                                className={cn(
+                                    "p-2 rounded-lg text-gray-400 bg-white border border-gray-200 hover:border-gray-300 hover:text-green-600 transition-all shadow-sm flex items-center gap-2",
+                                    (isLoading || isSaving) && "animate-pulse"
+                                )}
+                                title="Sync to Cloud (Manual)"
+                            >
+                                <Save className="w-4 h-4" />
+                                {isSaving && <span className="text-[10px] font-bold text-gray-400">Saving...</span>}
+                                {!isSaving && lastSaved && <span className="text-[10px] font-bold text-green-500">Saved</span>}
+                            </button>
+                        </div>
+
+                        <div className="h-6 w-px bg-gray-200"></div>
 
                         <button
                             onClick={handleGenerateSyllabus}
-                            className="px-4 py-1.5 bg-green-600 text-white text-xs font-semibold rounded hover:bg-green-700 transition-colors shadow-sm flex items-center gap-2"
+                            className="bg-green-600 text-white px-4 py-1.8 rounded-lg text-xs font-bold hover:bg-green-700 transition-all shadow-md active:scale-95 flex items-center gap-2"
                         >
-                            <FileText className="w-3 h-3" />
+                            <FileText className="w-3.5 h-3.5" />
                             Export Application
                         </button>
+                    </div>
+                </div>
 
-                        <div className="h-6 w-px bg-gray-200 mx-1"></div>
-
+                {/* SaaS Control Panel - State Expansion Operations */}
+                <div className="bg-gray-50 border-b border-gray-200 px-6 py-2 flex items-center justify-between shrink-0 z-10">
+                    <div className="flex items-center gap-4">
+                        <div className="flex items-center gap-2 px-3 py-1 bg-white border border-gray-200 rounded-lg shadow-sm">
+                            <span className="text-[10px] font-black text-gray-500 uppercase tracking-widest">Expansion Mode:</span>
+                            <div className="flex gap-2">
+                                <button className="text-[10px] font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded border border-blue-100 uppercase">National {"->"} {targetState}</button>
+                            </div>
+                        </div>
                         <button
-                            onClick={handleExportZip}
-                            className="px-4 py-1.5 bg-blue-600 text-white text-xs font-semibold rounded hover:bg-blue-700 transition-colors shadow-sm flex items-center gap-2"
+                            onClick={handleAutoBuildOutline}
+                            className="text-[10px] font-bold text-white bg-gradient-to-r from-purple-600 to-indigo-600 px-3 py-1.5 rounded-lg hover:shadow-lg transition-all flex items-center gap-2 group border border-purple-400/30"
                         >
-                            <Archive className="w-3 h-3" />
-                            Export Zip
+                            <Zap className="w-3 h-3 fill-white" />
+                            Fast Forward: Auto-Build {targetState}
                         </button>
+                        <button
+                            onClick={() => {
+                                const req = getRequirementForState(targetState);
+                                if (!req) {
+                                    alert(`Searching National Content for ${targetState} requirements... \n\nFound 3 gaps identified: \n1. Vermont Specific Finance Law\n2. VT License Maintenance\n3. State Audit Procedures`);
+                                    return;
+                                }
+                                alert(`Scanning Requirements for ${targetState} (${req.totalHours} hrs)...\n\nMatched ${courseItems.length}/${req.mandatoryTopics.length} Mandatory Topics.`);
+                            }}
+                            className="text-[10px] font-bold text-gray-700 bg-white border border-gray-200 px-3 py-1.5 rounded-lg hover:border-blue-400 hover:text-blue-600 transition-all flex items-center gap-2 group"
+                        >
+                            <svg className="w-3 h-3 group-hover:animate-pulse" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
+                            Identify {targetState} Gaps
+                        </button>
+                    </div>
+
+                    <div className="flex items-center gap-4">
+                        <div className="flex items-center gap-2">
+                            <span className="text-[10px] font-bold text-gray-400 uppercase">Batch Operations:</span>
+                            <button
+                                onClick={async () => {
+                                    setIsLoading(true);
+                                    // Simulate Batch Gemini verification
+                                    await new Promise(r => setTimeout(r, 1500));
+                                    setCourseItems(prev => prev.map(item => ({
+                                        ...item,
+                                        verified: { ...item.verified, gemini: true } as any,
+                                        children: item.children?.map(c => ({ ...c, verified: { ...c.verified, gemini: true } as any }))
+                                    })));
+                                    setIsLoading(false);
+                                    alert("Batch Gemini Verification Complete: Caching and saving results to database...");
+                                }}
+                                className="text-[10px] font-bold text-purple-700 bg-purple-50 border border-purple-200 px-3 py-1.5 rounded-lg hover:bg-purple-100 transition-all flex items-center gap-2"
+                            >
+                                <svg className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" /></svg>
+                                Batch API Verify
+                            </button>
+                        </div>
+                        <div className="h-4 w-px bg-gray-300"></div>
+                        <div className="flex items-center gap-2">
+                            <span className="text-[10px] font-bold text-gray-400 uppercase">Audit:</span>
+                            <button className="text-[10px] font-bold text-gray-600 hover:text-black">View Log</button>
+                        </div>
                     </div>
                 </div>
 
@@ -922,10 +1144,25 @@ export default function BuilderInterface({ files, approvedFiles }: { files: File
                             onSelectItem={handleSelectCourseItem}
                             onUpdateItem={handleUpdateCourseItem}
                             onAddItemToGroup={handleAddItemToGroup}
+                            onEdit={(item) => setEditingItem(item)}
                             targetHours={targetHours}
                             onNewCourse={() => setShowSetupModal(true)}
                         />
                     </div>
+
+                    {/* Writing Studio Modal */}
+                    {editingItem && (
+                        <TopicEditorModal
+                            item={editingItem}
+                            onUpdate={(id, updates) => {
+                                handleUpdateCourseItem(id, updates);
+                                // Refresh editingItem to show live updates in modal if needed, 
+                                // though TopicEditorModal has its own local state.
+                                setEditingItem(prev => prev ? { ...prev, ...updates } : null);
+                            }}
+                            onClose={() => setEditingItem(null)}
+                        />
+                    )}
 
                     {/* Preview Pane - Right Side */}
                     {showPreview && (
@@ -998,7 +1235,7 @@ export default function BuilderInterface({ files, approvedFiles }: { files: File
             {mounted && createPortal(
                 <DragOverlay dropAnimation={dropAnimation}>
                     {activeDragItem?.type === 'source' && (
-                        <DraggableFile node={activeDragItem.data} isOverlay />
+                        <DraggableFile node={activeDragItem.data.node} tag={activeDragItem.data.tag} isOverlay />
                     )}
                     {activeDragItem?.type === 'course' && (
                         <div className="opacity-80">

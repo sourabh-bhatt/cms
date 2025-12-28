@@ -3,11 +3,20 @@
 import React, { useState, useEffect } from 'react';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { GripVertical, X, FileText, Folder, Trash2, ChevronDown, ChevronRight, Clock, AlignLeft, CheckCircle2, AlertCircle, Plus } from 'lucide-react';
+import { GripVertical, X, FileText, Folder, Trash2, ChevronDown, ChevronRight, Clock, AlignLeft, CheckCircle2, AlertCircle, Plus, Sparkles, ShieldCheck, ListChecks, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { FileNode } from '@/lib/file-system';
+import { generateAIContent, verifyAIAccuracy, generateAIQuiz } from '@/app/actions';
 
 export type CourseItemType = 'file' | 'folder' | 'group';
+
+export interface QuizQuestion {
+    id: string;
+    question: string;
+    options: string[]; // [A, B, C, D]
+    correctAnswer: number; // 0-3
+    explanation: string;
+}
 
 export interface CourseItem {
     id: string; // unique instance ID
@@ -20,8 +29,15 @@ export interface CourseItem {
     estimatedMinutes?: number;
     tags?: ('national' | 'state')[];
     citation?: string;
-    verified?: boolean;
+    verified?: {
+        sara: boolean;
+        gemini: boolean;
+        team: boolean;
+    };
+    lastModified?: string;
+    author?: string;
     children?: CourseItem[];
+    quizzes?: QuizQuestion[];
 }
 
 interface SortableProps {
@@ -30,9 +46,10 @@ interface SortableProps {
     onSelect?: (item: CourseItem) => void;
     onUpdate?: (id: string, updates: Partial<CourseItem>) => void;
     onAddChild?: (parentId: string) => void;
+    onEdit?: (item: CourseItem) => void;
 }
 
-export function SortableItem({ item, onRemove, onSelect, onUpdate, onAddChild }: SortableProps) {
+export function SortableItem({ item, onRemove, onSelect, onUpdate, onAddChild, onEdit }: SortableProps) {
     const {
         attributes,
         listeners,
@@ -57,6 +74,7 @@ export function SortableItem({ item, onRemove, onSelect, onUpdate, onAddChild }:
     const [isEditingTitle, setIsEditingTitle] = useState(false);
     const [localName, setLocalName] = useState(item.name);
     const [localContent, setLocalContent] = useState(item.content || '');
+    const [isAIProcessing, setIsAIProcessing] = useState(false);
 
     // Auto-calculate word count and time
     useEffect(() => {
@@ -165,6 +183,7 @@ export function SortableItem({ item, onRemove, onSelect, onUpdate, onAddChild }:
                                             onUpdate={onUpdate}
                                             onSelect={onSelect}
                                             onAddChild={onAddChild}
+                                            onEdit={onEdit}
                                         />
                                     </div>
                                 ))}
@@ -251,15 +270,6 @@ export function SortableItem({ item, onRemove, onSelect, onUpdate, onAddChild }:
                             <Clock className="w-3 h-3" /> {(item.hours || 0).toFixed(2)} hrs
                         </span>
 
-                        {item.verified ? (
-                            <span className="text-[10px] font-bold text-green-600 flex items-center gap-0.5 bg-green-50 px-1.5 py-0.5 rounded-full">
-                                <CheckCircle2 className="w-3 h-3" /> Verified
-                            </span>
-                        ) : (
-                            <span className="text-[10px] font-bold text-amber-600 flex items-center gap-0.5 bg-amber-50 px-1.5 py-0.5 rounded-full">
-                                <AlertCircle className="w-3 h-3" /> Draft
-                            </span>
-                        )}
                     </div>
                 </div>
 
@@ -271,10 +281,18 @@ export function SortableItem({ item, onRemove, onSelect, onUpdate, onAddChild }:
                         {isExpanded ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
                     </button>
                     <button
-                        onClick={() => onRemove(item.id)}
-                        className="text-red-500 hover:text-red-600 p-1 hover:bg-red-50 rounded"
+                        onClick={(e) => { e.stopPropagation(); onEdit?.(item); }}
+                        className="p-1 text-gray-400 hover:text-purple-600 rounded flex items-center gap-1 group/edit"
+                        title="Open in Writing Studio"
                     >
-                        <Trash2 className="w-4 h-4" />
+                        <div className="w-0 overflow-hidden group-hover/edit:w-auto transition-all text-[10px] uppercase font-black whitespace-nowrap">Edit Studio</div>
+                        <Sparkles className="w-3.5 h-3.5" />
+                    </button>
+                    <button
+                        onClick={(e) => { e.stopPropagation(); onRemove(item.id); }}
+                        className="p-1 text-gray-400 hover:text-red-500 rounded"
+                    >
+                        <Trash2 className="w-3.5 h-3.5" />
                     </button>
                 </div>
             </div>
@@ -293,38 +311,87 @@ export function SortableItem({ item, onRemove, onSelect, onUpdate, onAddChild }:
                     <div className="flex items-center justify-between mt-3 pt-3 border-t border-gray-100">
                         <div className="flex items-center gap-2">
                             <div className="flex items-center gap-1">
-                                <span className="text-xs text-gray-500">Tags:</span>
-                                <button className="px-2 py-1 bg-gray-100 text-xs text-gray-600 rounded hover:bg-purple-100 hover:text-purple-600 transition-colors">
-                                    + National
+                                <div className="flex items-center gap-1">
+                                    <span className="text-xs text-gray-500">Tags:</span>
+                                    {item.tags && item.tags.length > 0 ? (
+                                        item.tags.map(tag => (
+                                            <span key={tag} className={cn(
+                                                "px-2 py-1 text-xs rounded transition-colors uppercase font-bold tracking-wider",
+                                                tag === 'national' ? "bg-blue-100 text-blue-700" : "bg-green-100 text-green-700"
+                                            )}>
+                                                + {tag}
+                                            </span>
+                                        ))
+                                    ) : (
+                                        <span className="text-xs text-gray-400 italic">No tags</span>
+                                    )}
+                                </div>
+                            </div>
+
+                        </div>
+
+                        <div className="flex items-center justify-between mt-3 pt-3 border-t border-gray-100">
+                            <div className="flex items-center gap-2">
+                                <button
+                                    disabled={isAIProcessing}
+                                    onClick={async (e) => {
+                                        e.stopPropagation();
+                                        setIsAIProcessing(true);
+                                        const res = await generateAIContent(item.name, "SaaS requirements");
+                                        if (res.success && res.content) {
+                                            handleContentChange({ target: { value: res.content } } as any);
+                                        }
+                                        setIsAIProcessing(false);
+                                    }}
+                                    className="px-3 py-1.5 bg-green-50 text-[10px] font-black text-green-700 rounded-lg border border-green-200 hover:bg-green-100 transition-all uppercase tracking-tighter flex items-center gap-1.5 disabled:opacity-50"
+                                >
+                                    {isAIProcessing ? <Loader2 className="w-3 h-3 animate-spin" /> : <Sparkles className="w-3 h-3" />}
+                                    Generate
                                 </button>
-                                <button className="px-2 py-1 bg-gray-100 text-xs text-gray-600 rounded hover:bg-green-100 hover:text-green-600 transition-colors">
-                                    + State
+                                <button
+                                    disabled={isAIProcessing}
+                                    onClick={async (e) => {
+                                        e.stopPropagation();
+                                        alert("Verification Process:\n\n1. AI analyzes your content.\n2. Compares against 'National' and 'State' rules.\n3. Checks for factual accuracy against raw sources.\n\n(Note: Connect a specific Raw Source file for deeper analysis.)");
+                                        setIsAIProcessing(true);
+                                        const res = await verifyAIAccuracy(localContent, "Generic Real Estate Principles Context");
+                                        if (res.success) {
+                                            onUpdate?.(item.id, {
+                                                verified: { ...item.verified, gemini: true } as any,
+                                                citation: res.citations?.[0] || item.citation
+                                            });
+                                            alert("✅ Audit Complete!\n\n" + res.feedback);
+                                        } else {
+                                            alert("Verification Failed: " + res.error);
+                                        }
+                                        setIsAIProcessing(false);
+                                    }}
+                                    className="px-3 py-1.5 bg-purple-50 text-[10px] font-black text-purple-700 rounded-lg border border-purple-200 hover:bg-purple-100 transition-all uppercase tracking-tighter flex items-center gap-1.5 disabled:opacity-50"
+                                    title="Audit content accuracy against sources"
+                                >
+                                    {isAIProcessing ? <Loader2 className="w-3 h-3 animate-spin" /> : <ShieldCheck className="w-3 h-3" />}
+                                    Verify Accuracy
+                                </button>
+                                <button
+                                    disabled={isAIProcessing}
+                                    className="px-3 py-1.5 bg-blue-50 text-[10px] font-black text-blue-700 rounded-lg border border-blue-200 hover:bg-blue-100 transition-all uppercase tracking-tighter flex items-center gap-1.5 disabled:opacity-50"
+                                >
+                                    <ListChecks className="w-3 h-3" />
+                                    Add Quiz
                                 </button>
                             </div>
                         </div>
 
-                        <div className="flex items-center gap-2">
-                            <label className="flex items-center gap-2 cursor-pointer group">
-                                <input
-                                    type="checkbox"
-                                    checked={item.verified}
-                                    onChange={(e) => onUpdate && onUpdate(item.id, { verified: e.target.checked })}
-                                    className="w-4 h-4 text-purple-600 rounded border-gray-300 focus:ring-purple-500 cursor-pointer"
-                                />
-                                <span className="text-xs font-medium text-gray-500 group-hover:text-purple-700 transition-colors">Mark Verified</span>
-                            </label>
+                        <div className="mt-3">
+                            <label className="block text-xs font-bold text-gray-700 uppercase mb-1">Citation / Reference</label>
+                            <input
+                                type="text"
+                                value={item.citation || ''}
+                                onChange={(e) => onUpdate && onUpdate(item.id, { citation: e.target.value })}
+                                placeholder="e.g. 26 V.S.A. § 2211"
+                                className="w-full px-3 py-1.5 text-xs font-medium text-gray-900 placeholder:text-gray-400 bg-white border border-gray-300 rounded focus:outline-none focus:border-purple-500 transition-colors"
+                            />
                         </div>
-                    </div>
-
-                    <div className="mt-3">
-                        <label className="block text-xs font-bold text-gray-700 uppercase mb-1">Citation / Reference</label>
-                        <input
-                            type="text"
-                            value={item.citation || ''}
-                            onChange={(e) => onUpdate && onUpdate(item.id, { citation: e.target.value })}
-                            placeholder="e.g. 26 V.S.A. § 2211"
-                            className="w-full px-3 py-1.5 text-xs font-medium text-gray-900 placeholder:text-gray-400 bg-white border border-gray-300 rounded focus:outline-none focus:border-purple-500 transition-colors"
-                        />
                     </div>
                 </div>
             )}

@@ -18,9 +18,10 @@ interface CanvasProps {
     targetHours?: number; // Prop passed from parent
     onNewCourse?: () => void;
     onAddItemToGroup?: (groupId: string) => void;
+    onEdit?: (item: CourseItem) => void;
 }
 
-export function TargetCanvas({ items, onRemoveItem, onClear, onSave, onAddGroup, onSelectItem, onUpdateItem, targetHours = 40, onNewCourse, onAddItemToGroup }: CanvasProps) {
+export function TargetCanvas({ items, onRemoveItem, onClear, onSave, onAddGroup, onSelectItem, onUpdateItem, targetHours = 40, onNewCourse, onAddItemToGroup, onEdit }: CanvasProps) {
     const { setNodeRef, isOver } = useDroppable({
         id: 'target-canvas',
     });
@@ -121,6 +122,7 @@ export function TargetCanvas({ items, onRemoveItem, onClear, onSave, onAddGroup,
                                     onUpdate={onUpdateItem}
                                     onSelect={onSelectItem}
                                     onAddChild={onAddItemToGroup}
+                                    onEdit={onEdit}
                                 />
                             ))}
                         </div>

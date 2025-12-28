@@ -5,6 +5,10 @@ import Content from '@/lib/models/Content';
 import Resource from '@/lib/models/Resource';
 import Course from '@/lib/models/Course';
 import { revalidatePath } from 'next/cache';
+import { getRequirementForState } from '@/lib/state-requirements';
+
+const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
+const GEMINI_API_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent";
 
 // Helper to check if string is ObjectId
 const isObjectId = (str: string) => /^[0-9a-fA-F]{24}$/.test(str);
@@ -257,5 +261,149 @@ export async function renameResource(idOrPath: string, newName: string) {
     } catch (error) {
         console.error('Error renaming resource:', error);
         return { success: false, error: 'Failed to rename resource' };
+    }
+}
+
+// --- AI Course Actions (SaaS Grade) ---
+
+export async function generateAIContent(topicName: string, requirements: string, context?: string) {
+    if (!GEMINI_API_KEY) return { success: false, error: "API Key missing" };
+
+    try {
+        const prompt = `You are a real estate course content creator. Generate a professional education module for the topic: "${topicName}". 
+        Requirements: ${requirements}
+        ${context ? `Use the following source material context: ${context}` : ''}
+        Format in Markdown. 
+        Focus on clarity, legal accuracy, and engagement.`;
+
+        const response = await fetch(`${GEMINI_API_URL}?key=${GEMINI_API_KEY}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                contents: [{ parts: [{ text: prompt }] }]
+            })
+        });
+
+        const data = await response.json();
+        const content = data.candidates[0].content.parts[0].text;
+
+        return { success: true, content };
+    } catch (error) {
+        console.error("AI Generation failed:", error);
+        return { success: false, error: "AI Generation failed" };
+    }
+}
+
+export async function verifyAIAccuracy(content: string, rawSource: string) {
+    if (!GEMINI_API_KEY) return { success: false, error: "API Key missing" };
+
+    try {
+        const prompt = `Audit this real estate course content for accuracy against the following raw source material.
+        
+        CONTENT TO AUDIT:
+        ${content}
+        
+        RAW SOURCE MATERIAL:
+        ${rawSource}
+        
+        Identify any discrepancies, missing legal requirements, or factual errors. 
+        Return your findings as a professional audit report with citations.`;
+
+        const response = await fetch(`${GEMINI_API_URL}?key=${GEMINI_API_KEY}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                contents: [{ parts: [{ text: prompt }] }]
+            })
+        });
+
+        const data = await response.json();
+        const feedback = data.candidates[0].content.parts[0].text;
+
+        return {
+            success: true,
+            isAccurate: !feedback.toLowerCase().includes('discrepancy') && !feedback.toLowerCase().includes('error'),
+            feedback,
+            citations: []
+        };
+    } catch (error) {
+        console.error("AI Audit failed:", error);
+        return { success: false, error: "AI Audit failed" };
+    }
+}
+
+export async function generateAIQuiz(topicContent: string) {
+    if (!GEMINI_API_KEY) return { success: false, error: "API Key missing" };
+
+    try {
+        const prompt = `Based on this real estate course content: "${topicContent}", generate 5 multiple choice questions. 
+        Format as a JSON array of objects:
+        [
+          { 
+            "id": "q1",
+            "question": "...", 
+            "options": ["A", "B", "C", "D"], 
+            "correctAnswer": 0, 
+            "explanation": "..." 
+          }
+        ]
+        ONLY return the JSON array, no other text.`;
+
+        const response = await fetch(`${GEMINI_API_URL}?key=${GEMINI_API_KEY}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                contents: [{ parts: [{ text: prompt }] }]
+            })
+        });
+
+        const data = await response.json();
+        let text = data.candidates[0].content.parts[0].text;
+        text = text.replace(/```json/g, '').replace(/```/g, '').trim();
+        const questions = JSON.parse(text);
+
+        return { success: true, questions };
+    } catch (error) {
+        console.error("Quiz Gen Error:", error);
+        return { success: false, error: "AI Quiz Generation failed" };
+    }
+}
+
+// --- State Asset Retrieval ---
+
+export async function getResourceBinary(id: string) {
+    await dbConnect();
+    try {
+        const resource = await Resource.findById(id).lean();
+        if (!resource || !resource.data) return null;
+
+        // Convert Buffer to base64 for Transfer over the wire
+        return {
+            success: true,
+            data: resource.data.toString('base64'),
+            title: resource.title,
+            contentType: resource.contentType || 'application/pdf'
+        };
+    } catch (error) {
+        return { success: false, error: 'Failed to fetch resource binary' };
+    }
+}
+
+export async function findStateAssets(state: string) {
+    await dbConnect();
+    try {
+        const resources = await Resource.find({ state }).lean();
+
+        // Simple heuristic: find "Resume" or "Certificate" in titles
+        const resume = resources.find(r => r.title.toLowerCase().includes('resume'));
+        const certificate = resources.find(r => r.title.toLowerCase().includes('certificate') || r.title.toLowerCase().includes('cert'));
+
+        return {
+            success: true,
+            resume: resume ? { id: resume._id.toString(), title: resume.title } : null,
+            certificate: certificate ? { id: certificate._id.toString(), title: certificate.title } : null
+        };
+    } catch (error) {
+        return { success: false, error: 'Failed to find state assets' };
     }
 }

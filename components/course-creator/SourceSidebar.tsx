@@ -65,7 +65,7 @@ function FileMenu({ node, onDelete, onEdit, onRename }: { node: FileNode, onDele
     );
 }
 
-function FolderItem({ node, onSelect }: { node: FileNode; onSelect?: (node: FileNode) => void }) {
+function FolderItem({ node, onSelect, tag }: { node: FileNode; onSelect?: (node: FileNode) => void, tag?: 'national' | 'state' }) {
     const [isOpen, setIsOpen] = useState(false);
 
     if (node.type === 'file') {
@@ -73,7 +73,7 @@ function FolderItem({ node, onSelect }: { node: FileNode; onSelect?: (node: File
         // But if a file ends up here, render it
         return (
             <div onClick={() => onSelect?.(node)}>
-                <DraggableFile node={node} />
+                <DraggableFile node={node} tag={tag} />
             </div>
         );
     }
@@ -95,10 +95,10 @@ function FolderItem({ node, onSelect }: { node: FileNode; onSelect?: (node: File
                 <div className="pl-3 border-l-2 border-green-100 ml-2 mt-1 flex flex-col gap-0.5">
                     {node.children?.map((child) => (
                         child.type === 'folder' ? (
-                            <FolderItem key={child.id} node={child} onSelect={onSelect} />
+                            <FolderItem key={child.id} node={child} onSelect={onSelect} tag={tag} />
                         ) : (
                             <div key={child.id} onClick={() => onSelect?.(child)}>
-                                <DraggableFile node={child} />
+                                <DraggableFile node={child} tag={tag} />
                             </div>
                         )
                     ))}
@@ -274,9 +274,17 @@ export function SourceSidebar({ files, approvedFiles, onSelectFile, onClose, tar
         <div className="w-full h-full flex flex-col bg-white z-20 relative">
             <div className="p-3 border-b border-gray-200 bg-gray-50 space-y-3">
                 <div className="flex items-center justify-between mb-1">
-                    <span className="text-[10px] uppercase font-bold text-gray-700 tracking-wider">Resources</span>
+                    <div className="flex flex-col">
+                        <span className="text-[10px] uppercase font-black text-gray-400 tracking-widest">Resources</span>
+                        {activeTab === 'national' && (
+                            <div className="flex items-center gap-1.5 mt-1">
+                                <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse"></span>
+                                <span className="text-[9px] font-bold text-amber-600 uppercase tracking-tighter shadow-sm px-1.5 py-0.5 bg-amber-50 rounded border border-amber-100 italic">Priority: Verify Page/Topic</span>
+                            </div>
+                        )}
+                    </div>
                     {onClose && (
-                        <button onClick={onClose} className="text-gray-600 hover:text-green-700 p-1 hover:bg-green-100 rounded-lg transition-colors" title="Collapse Sidebar">
+                        <button onClick={onClose} className="text-gray-400 hover:text-green-700 p-1.5 hover:bg-green-100 rounded-lg transition-all" title="Collapse Sidebar">
                             <PanelLeftClose className="w-4 h-4" />
                         </button>
                     )}
@@ -375,11 +383,11 @@ export function SourceSidebar({ files, approvedFiles, onSelectFile, onClose, tar
                 {filteredFiles.length > 0 ? (
                     filteredFiles.map((node) => (
                         node.type === 'folder' ? (
-                            <FolderItem key={node.id} node={node} onSelect={handleNodeClick} />
+                            <FolderItem key={node.id} node={node} onSelect={handleNodeClick} tag={activeTab === 'national' ? 'national' : 'state'} />
                         ) : (
                             <div key={node.id} className="group relative hover:bg-green-50 rounded-lg transition-colors flex items-center justify-between pr-2">
                                 <div onClick={() => handleNodeClick(node)} className="flex-1 min-w-0">
-                                    <DraggableFile node={node} />
+                                    <DraggableFile node={node} tag={activeTab === 'national' ? 'national' : 'state'} />
                                 </div>
                                 <div className="opacity-0 group-hover:opacity-100 transition-opacity flex items-center">
                                     <FileMenu
