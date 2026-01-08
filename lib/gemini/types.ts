@@ -31,6 +31,11 @@ export interface OutlineTopic {
     sourceFile: string;
     estimatedMinutes: number;
     order: number;
+    validation?: {
+        wordCount: number;
+        sourceType: 'national' | 'resource' | 'missing';
+        notes: string;
+    };
 }
 
 export interface TopicContent {

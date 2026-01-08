@@ -50,7 +50,14 @@ export function validateAndFixOutline(output: OutlineOutput, context: Validation
 
             return {
                 ...topic,
-                estimatedMinutes: calculatedMinutes
+                estimatedMinutes: calculatedMinutes,
+                validation: {
+                    wordCount: fileNode.wordCount || 0,
+                    sourceType: (fileNode.type as 'national' | 'resource') || 'national',
+                    notes: fileNode.wordCount
+                        ? `Validated against ${fileNode.wordCount} words. Time calculated at ${WORDS_PER_MINUTE} WPM.`
+                        : `File exists but word count unavailable (PDF/Link). Defaulted time or used AI estimate.`
+                }
             };
         });
 

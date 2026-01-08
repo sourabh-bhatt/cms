@@ -1,0 +1,197 @@
+{
+  "success": true,
+  "outline": {
+    "sections": [
+      {
+        "id": "mock-1",
+        "title": "Vermont Principles (Generated)",
+        "hours": 1.4,
+        "topics": [
+          {
+            "id": "topic-0",
+            "name": "Area Preference in Real Estate",
+            "sourceFile": "Area Preference in Real Estate",
+            "estimatedMinutes": 5,
+            "order": 1,
+            "validation": {
+              "wordCount": 685,
+              "sourceType": "national",
+              "notes": "Validated against 685 words. Time calculated at 150 WPM."
+            }
+          },
+          {
+            "id": "topic-1",
+            "name": "Economic Characteristics of Land Influencing Its Value",
+            "sourceFile": "Economic Characteristics of Land Influencing Its Value",
+            "estimatedMinutes": 6,
+            "order": 2,
+            "validation": {
+              "wordCount": 769,
+              "sourceType": "national",
+              "notes": "Validated against 769 words. Time calculated at 150 WPM."
+            }
+          },
+          {
+            "id": "topic-2",
+            "name": "Economic Characteristics of Real Property Assemblage and Plottage Value",
+            "sourceFile": "Economic Characteristics of Real Property Assemblage and Plottage Value",
+            "estimatedMinutes": 5,
+            "order": 3,
+            "validation": {
+              "wordCount": 679,
+              "sourceType": "national",
+              "notes": "Validated against 679 words. Time calculated at 150 WPM."
+            }
+          },
+          {
+            "id": "topic-3",
+            "name": "Economic Stages in Real Estate Growth, Equilibrium, and Decline",
+            "sourceFile": "Economic Stages in Real Estate Growth, Equilibrium, and Decline",
+            "estimatedMinutes": 6,
+            "order": 4,
+            "validation": {
+              "wordCount": 799,
+              "sourceType": "national",
+              "notes": "Validated against 799 words. Time calculated at 150 WPM."
+            }
+          },
+          {
+            "id": "topic-4",
+            "name": "External Obsolescence and Economic Obsolescence in Real Estate",
+            "sourceFile": "External Obsolescence and Economic Obsolescence in Real Estate",
+            "estimatedMinutes": 4,
+            "order": 5,
+            "validation": {
+              "wordCount": 575,
+              "sourceType": "national",
+              "notes": "Validated against 575 words. Time calculated at 150 WPM."
+            }
+          },
+          {
+            "id": "topic-5",
+            "name": "Impact of Garage Types on Property Value",
+            "sourceFile": "Impact of Garage Types on Property Value",
+            "estimatedMinutes": 6,
+            "order": 6,
+            "validation": {
+              "wordCount": 830,
+              "sourceType": "national",
+              "notes": "Validated against 830 words. Time calculated at 150 WPM."
+            }
+          },
+          {
+            "id": "topic-6",
+            "name": "Real Estate as an Indicator of Economic Health",
+            "sourceFile": "Real Estate as an Indicator of Economic Health",
+            "estimatedMinutes": 6,
+            "order": 7,
+            "validation": {
+              "wordCount": 804,
+              "sourceType": "national",
+              "notes": "Validated against 804 words. Time calculated at 150 WPM."
+            }
+          },
+          {
+            "id": "topic-7",
+            "name": "The Federal Reserve System and Its Impact on Real Estate",
+            "sourceFile": "The Federal Reserve System and Its Impact on Real Estate",
+            "estimatedMinutes": 7,
+            "order": 8,
+            "validation": {
+              "wordCount": 902,
+              "sourceType": "national",
+              "notes": "Validated against 902 words. Time calculated at 150 WPM."
+            }
+          },
+          {
+            "id": "topic-8",
+            "name": "The Principle of Conformity in Real Estate",
+            "sourceFile": "The Principle of Conformity in Real Estate",
+            "estimatedMinutes": 5,
+            "order": 9,
+            "validation": {
+              "wordCount": 609,
+              "sourceType": "national",
+              "notes": "Validated against 609 words. Time calculated at 150 WPM."
+            }
+          },
+          {
+            "id": "topic-9",
+            "name": "The Role of Commercial Banks in Real Estate",
+            "sourceFile": "The Role of Commercial Banks in Real Estate",
+            "estimatedMinutes": 6,
+            "order": 10,
+            "validation": {
+              "wordCount": 811,
+              "sourceType": "national",
+              "notes": "Validated against 811 words. Time calculated at 150 WPM."
+            }
+          },
+          {
+            "id": "topic-10",
+            "name": "Understanding Employment in Real Estate Economic and Social Responsibilities",
+            "sourceFile": "Understanding Employment in Real Estate Economic and Social Responsibilities",
+            "estimatedMinutes": 7,
+            "order": 11,
+            "validation": {
+              "wordCount": 995,
+              "sourceType": "national",
+              "notes": "Validated against 995 words. Time calculated at 150 WPM."
+            }
+          },
+          {
+            "id": "topic-11",
+            "name": "Understanding Equity in Real Estate",
+            "sourceFile": "Understanding Equity in Real Estate",
+            "estimatedMinutes": 5,
+            "order": 12,
+            "validation": {
+              "wordCount": 643,
+              "sourceType": "national",
+              "notes": "Validated against 643 words. Time calculated at 150 WPM."
+            }
+          },
+          {
+            "id": "topic-12",
+            "name": "Understanding Industrial Real Estate",
+            "sourceFile": "Understanding Industrial Real Estate",
+            "estimatedMinutes": 6,
+            "order": 13,
+            "validation": {
+              "wordCount": 770,
+              "sourceType": "national",
+              "notes": "Validated against 770 words. Time calculated at 150 WPM."
+            }
+          },
+          {
+            "id": "topic-13",
+            "name": "Understanding Liquidity and Real Estate",
+            "sourceFile": "Understanding Liquidity and Real Estate",
+            "estimatedMinutes": 5,
+            "order": 14,
+            "validation": {
+              "wordCount": 711,
+              "sourceType": "national",
+              "notes": "Validated against 711 words. Time calculated at 150 WPM."
+            }
+          },
+          {
+            "id": "topic-14",
+            "name": "Understanding Volume in Real Estate",
+            "sourceFile": "Understanding Volume in Real Estate",
+            "estimatedMinutes": 5,
+            "order": 15,
+            "validation": {
+              "wordCount": 714,
+              "sourceType": "national",
+              "notes": "Validated against 714 words. Time calculated at 150 WPM."
+            }
+          }
+        ]
+      }
+    ],
+    "totalHours": 1.4
+  },
+  "missingTopics": [],
+  "reasoning": "Fallback generation using verified available files.\n[System Validation]: Recalculated times based on 150 WPM. Verified file existence."
+}
