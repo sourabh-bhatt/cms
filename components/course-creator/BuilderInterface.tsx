@@ -15,7 +15,7 @@ import {
     DropAnimation,
 } from '@dnd-kit/core';
 import { createPortal } from 'react-dom';
-import { FileText, Save, FolderOpen, Plus, AlignLeft, LayoutTemplate, X, GripVertical, PanelLeftOpen, Archive } from 'lucide-react';
+import { FileText, Save, FolderOpen, Plus, AlignLeft, LayoutTemplate, X, GripVertical, PanelLeftOpen, Archive, AlertTriangle, CheckCircle, Loader2, Eye, Laptop, Zap, History, LogOut, Trash2 } from 'lucide-react';
 import JSZip from 'jszip';
 import { saveAs } from 'file-saver';
 import { arrayMove } from '@dnd-kit/sortable';
@@ -25,10 +25,13 @@ import {
     saveCourse,
     loadCourse,
     getCourseList,
+
+    deleteCourse,
     readFileContent,
     findStateAssets,
     getResourceBinary
 } from '@/app/actions';
+import { verifyCourseStructure, VerificationResult } from '@/lib/actions/verify-actions';
 import { cn } from '@/lib/utils';
 import { SourceSidebar } from './SourceSidebar';
 import { TargetCanvas } from './TargetCanvas';
@@ -38,7 +41,10 @@ import { SortableItem } from './SortableItem';
 import { CourseSetup, CourseConfig } from './CourseSetup';
 import { TopicEditorModal } from './TopicEditorModal';
 import { getRequirementForState } from '@/lib/state-requirements';
-import { Zap } from 'lucide-react';
+import { ActivityLogPanel } from '@/components/ActivityLogPanel';
+import { useAuth } from '@/components/auth/AuthProvider';
+import { GeminiLogEntry, OutlineSection } from '@/lib/gemini/types';
+import { extractFilenames } from '@/lib/gemini/context-builder';
 
 const dropAnimation: DropAnimation = {
     sideEffects: defaultDropAnimationSideEffects({
@@ -56,6 +62,7 @@ const stripMetadata = (content: string) => {
 };
 
 export default function BuilderInterface({ files, approvedFiles }: { files: FileNode[], approvedFiles: FileNode[] }) {
+    const { user, logout } = useAuth();
     const [courseItems, setCourseItems] = useState<CourseItem[]>([]);
     const [activeDragItem, setActiveDragItem] = useState<{ type: 'source' | 'course', data: any } | null>(null);
     const [previewContent, setPreviewContent] = useState<string | null>(null);
@@ -63,7 +70,7 @@ export default function BuilderInterface({ files, approvedFiles }: { files: File
     const [previewItemId, setPreviewItemId] = useState<string | null>(null);
     const [linkData, setLinkData] = useState<{ title: string; url: string } | null>(null);
     const [mounted, setMounted] = useState(false);
-    const [savedCourses, setSavedCourses] = useState<string[]>([]);
+
     const [isLoading, setIsLoading] = useState(false);
     const [showSidebar, setShowSidebar] = useState(true);
     const [showPreview, setShowPreview] = useState(false);
@@ -115,6 +122,20 @@ export default function BuilderInterface({ files, approvedFiles }: { files: File
     const [showSetupModal, setShowSetupModal] = useState(false);
     const [lastSaved, setLastSaved] = useState<Date | null>(null);
     const [isSaving, setIsSaving] = useState(false);
+
+    // Gemini Integration State
+    const [geminiLogs, setGeminiLogs] = useState<GeminiLogEntry[]>([]);
+    const [showGeminiLogs, setShowGeminiLogs] = useState(false);
+    const [showOutlineSettings, setShowOutlineSettings] = useState(false);
+    const [showFileSelection, setShowFileSelection] = useState(false);
+    const [savedCourses, setSavedCourses] = useState<{ title: string; updatedAt: string }[]>([]);
+    const [selectedFiles, setSelectedFiles] = useState<string[]>([]);
+    const [isGenerating, setIsGenerating] = useState(false);
+    const [isDeleting, setIsDeleting] = useState<string | null>(null);
+
+
+    const [isVerifyingStructure, setIsVerifyingStructure] = useState(false);
+    const [verificationResult, setVerificationResult] = useState<VerificationResult | null>(null);
 
     // Debounced Auto-Save
     useEffect(() => {
@@ -257,7 +278,7 @@ export default function BuilderInterface({ files, approvedFiles }: { files: File
         setIsSaving(false);
         // Refresh list
         const list = await getCourseList();
-        setSavedCourses(list);
+        setSavedCourses(list as any);
         alert('Course saved to cloud successfully!');
     };
 
@@ -274,10 +295,35 @@ export default function BuilderInterface({ files, approvedFiles }: { files: File
         setShowLoadMenu(false);
     };
 
+    const handleDeleteCourse = async (filename: string, e: React.MouseEvent) => {
+        e.stopPropagation();
+        if (!confirm(`Are you sure you want to delete "${filename.replace(/_/g, ' ')}"?`)) return;
+
+        setIsDeleting(filename);
+        try {
+            const { deleteCourse } = await import('@/app/actions');
+            const result = await deleteCourse(filename); // Add user logic if needed later
+
+            if (result.success) {
+                const list = await getCourseList();
+                setSavedCourses(list as any);
+            } else {
+                alert('Failed to delete course');
+            }
+        } catch (error) {
+            console.error('Delete error:', error);
+            alert('Error deleting course');
+        } finally {
+            setIsDeleting(null);
+        }
+    };
+
     const handleFetchCourses = async () => {
-        const list = await getCourseList();
-        setSavedCourses(list);
         setShowLoadMenu(!showLoadMenu);
+        if (!showLoadMenu) {
+            const list = await getCourseList();
+            setSavedCourses(list as any);
+        }
     };
 
     const handleNewCourse = () => {
@@ -624,59 +670,99 @@ export default function BuilderInterface({ files, approvedFiles }: { files: File
         setCourseItems((items) => [...items, newGroup]);
     };
 
-    const handleAutoBuildOutline = () => {
-        const req = getRequirementForState(targetState);
-        if (!req) {
-            alert(`No requirement matrix found for ${targetState}. Please build manually.`);
-            return;
-        }
+    const handleAutoBuildOutline = async () => {
+        setIsGenerating(true);
+        try {
+            // 1. Prepare Context (National + Approved Files)
+            const allFiles = [...files, ...approvedFiles];
+            const filenames = [
+                ...extractFilenames(files),
+                ...extractFilenames(approvedFiles)
+            ];
 
-        setIsLoading(true);
-        setTimeout(() => {
-            const newItems: CourseItem[] = [];
-
-            req.mandatoryTopics.forEach(topic => {
-                const group: CourseItem = {
-                    id: Math.random().toString(36).substr(2, 9),
-                    nodeId: 'auto-gen',
-                    name: topic.name,
-                    type: 'group',
-                    hours: topic.hours,
-                    children: []
-                };
-
-                // Search national content for matches
-                const matches: FileNode[] = [];
-                const searchRecursive = (nodes: FileNode[]) => {
-                    nodes.forEach(node => {
-                        if (node.type === 'file' && topic.keywords.some(kw => node.name.toLowerCase().includes(kw))) {
-                            matches.push(node);
-                        }
-                        if (node.children) searchRecursive(node.children);
-                    });
-                };
-                searchRecursive(files);
-
-                // Add top 3 matches to each group
-                matches.slice(0, 3).forEach(match => {
-                    group.children?.push({
-                        id: Math.random().toString(36).substr(2, 9),
-                        nodeId: match.id,
-                        name: match.name,
-                        type: 'file',
-                        verified: { sara: true, gemini: false, team: false }
-                    });
-                });
-
-                newItems.push(group);
+            // 2. Call Gemini
+            const response = await fetch('/api/gemini', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    action: 'create_outline', // Direct creation, skipping selection step as user wants fast-forward
+                    context: {
+                        filenames,
+                        stateCode: targetState,
+                        targetHours: targetHours,
+                        mandatoryTopics: getRequirementForState(targetState)?.mandatoryTopics.map(t => t.name)
+                    },
+                    userPrompt: "Generate a complete outline using EXCLUSIVELY the provided available filenames. Ensure time compliance."
+                })
             });
 
-            setCourseItems(newItems);
-            setIsLoading(false);
-            setCourseItems(newItems);
-            setIsLoading(false);
-            alert(`Fast Forward Complete! Generated ${newItems.length} course modules for ${targetState} based on Mandatory State Requirements.\n\nNote: Module names are matched to state laws but can be renamed directly.`);
-        }, 800);
+            const result = await response.json();
+
+            if (result.success && result.data?.outline?.sections) {
+                // 3. Convert to CourseItems
+                const newItems: CourseItem[] = result.data.outline.sections.map((section: OutlineSection) => ({
+                    id: Math.random().toString(36).substr(2, 9),
+                    nodeId: 'gemini-' + section.id,
+                    name: section.title,
+                    type: 'group',
+                    hours: section.hours,
+                    children: section.topics.map((topic: any) => ({
+                        id: Math.random().toString(36).substr(2, 9),
+                        nodeId: topic.sourceFile,
+                        name: topic.name,
+                        type: 'file' as const,
+                        hours: topic.estimatedMinutes / 60,
+                        verified: { sara: false, gemini: true, team: false }
+                    }))
+                }));
+
+                setCourseItems(newItems);
+
+                // 4. Sync Logs
+                fetch('/api/gemini').then(r => r.json()).then(data => {
+                    if (data.logs) setGeminiLogs(data.logs);
+                });
+
+                alert(`✨ Auto-Build Complete! Gemini generated ${newItems.length} modules matching ${targetState} requirements.`);
+            } else {
+                throw new Error(result.error || "Failed to generate valid outline structure");
+            }
+
+        } catch (error) {
+            console.error("Auto-Build Error:", error);
+            alert(`Error during Auto-Build: ${error instanceof Error ? error.message : 'Unknown error'}`);
+        } finally {
+            setIsGenerating(false);
+        }
+    };
+
+
+
+    // Recalculate hours to match target
+    const handleRecalculateHours = () => {
+        const totalTopics = courseItems.reduce((sum, item) =>
+            sum + (item.children?.length || 0) + (item.type === 'file' ? 1 : 0), 0);
+
+        if (totalTopics === 0) return;
+
+        const hoursPerTopic = targetHours / totalTopics;
+
+        setCourseItems(items => items.map(item => {
+            if (item.type === 'group' && item.children) {
+                const updated = {
+                    ...item,
+                    children: item.children.map(child => ({
+                        ...child,
+                        hours: hoursPerTopic
+                    })),
+                    hours: item.children.length * hoursPerTopic
+                };
+                return updated;
+            }
+            return { ...item, hours: hoursPerTopic };
+        }));
+
+        alert(`Hours redistributed evenly: ${hoursPerTopic.toFixed(2)} hours per topic`);
     };
 
     const handleGenerateSyllabus = () => {
@@ -857,6 +943,38 @@ export default function BuilderInterface({ files, approvedFiles }: { files: File
         handleGenerateSyllabus();
     };
 
+    const handleVerifyAndExport = async () => {
+        setIsVerifyingStructure(true);
+        try {
+            // 1. Verify Structure
+            const result = await verifyCourseStructure(courseItems, targetHours);
+            setVerificationResult(result);
+            setIsVerifyingStructure(false);
+
+            if (!result.success || result.issues.length > 0) {
+                // Show critical errors
+                let message = "⚠️ Verification Issues Found:\n\n";
+                result.issues.forEach(issue => message += `- ${issue}\n`);
+                if (result.itemDetails.some(i => i.status === 'error')) {
+                    message += "\nSome files are missing or invalid. Please fix before exporting.";
+                }
+                message += "\n\nDo you want to proceed with export anyway?";
+
+                if (!confirm(message)) return;
+            } else {
+                alert("✅ Verification Passed! All files exist and word counts align with hour estimates.");
+            }
+
+            // 2. Proceed to Export
+            handleExportZip();
+
+        } catch (e) {
+            console.error(e);
+            setIsVerifyingStructure(false);
+            alert("Verification failed due to system error.");
+        }
+    };
+
     return (
         <DndContext
             sensors={sensors}
@@ -953,21 +1071,22 @@ export default function BuilderInterface({ files, approvedFiles }: { files: File
                                 onClick={() => setShowPreview(!showPreview)}
                                 className={cn(
                                     "p-2 rounded-lg transition-all border",
-                                    showPreview ? "text-blue-600 bg-blue-50 border-blue-200 shadow-inner" : "text-gray-400 bg-white border-gray-200 hover:border-gray-300 shadow-sm"
+                                    showPreview ? "text-indigo-600 bg-indigo-50 border-indigo-200 shadow-inner" : "text-gray-500 bg-white border-gray-200 hover:border-gray-300 shadow-sm"
                                 )}
-                                title="Toggle Live Preview"
+                                title="Preview Course"
                             >
-                                <LayoutTemplate className="w-4 h-4" />
+                                <Eye className="w-4 h-4" />
                             </button>
 
                             <div className="relative group/load">
                                 <button
                                     onClick={handleFetchCourses}
-                                    className="p-2 rounded-lg text-gray-400 bg-white border border-gray-200 hover:border-gray-300 hover:text-green-600 transition-all shadow-sm"
+                                    className="p-2 rounded-lg text-gray-500 bg-white border border-gray-200 hover:border-gray-300 hover:text-indigo-600 transition-all shadow-sm"
                                     title="Load Saved Course"
                                 >
                                     <FolderOpen className="w-4 h-4" />
                                 </button>
+                                {/* ... existing load menu logic ... */}
                                 {showLoadMenu && (
                                     <div className="absolute top-full right-0 mt-2 w-64 bg-white rounded-xl shadow-2xl border border-gray-100 z-50 overflow-hidden animate-in fade-in slide-in-from-top-2">
                                         <div className="px-4 py-3 bg-gray-50 border-b border-gray-100 text-[10px] font-bold text-gray-400 uppercase tracking-widest flex items-center justify-between">
@@ -981,15 +1100,41 @@ export default function BuilderInterface({ files, approvedFiles }: { files: File
                                                     <p className="text-xs text-gray-400 italic font-medium">No courses found</p>
                                                 </div>
                                             ) : (
-                                                savedCourses.map(c => (
-                                                    <button
-                                                        key={c}
-                                                        onClick={() => handleLoadCourse(c)}
-                                                        className="w-full text-left px-3 py-2.3 text-sm font-semibold text-gray-700 hover:bg-green-50 hover:text-green-700 rounded-lg transition-colors flex items-center gap-2 group/item mb-0.5"
+                                                savedCourses.map((c: any) => (
+                                                    <div
+                                                        key={c.title}
+                                                        className="group/item flex items-center justify-between w-full hover:bg-gray-50 rounded-lg p-1.5 mb-1 transition-colors"
                                                     >
-                                                        <div className="w-1.5 h-1.5 rounded-full bg-gray-200 group-hover/item:bg-green-500 transition-colors"></div>
-                                                        <span className="truncate flex-1">{c.replace(/_/g, ' ')}</span>
-                                                    </button>
+                                                        <button
+                                                            onClick={() => handleLoadCourse(c.title)}
+                                                            className="flex-1 text-left flex items-center gap-3 overflow-hidden"
+                                                        >
+                                                            <div className="w-8 h-8 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center shrink-0">
+                                                                <FileText className="w-4 h-4" />
+                                                            </div>
+                                                            <div className="min-w-0">
+                                                                <div className="text-sm font-semibold text-gray-700 truncate group-hover/item:text-indigo-600 transition-colors">
+                                                                    {c.title.replace(/_/g, ' ')}
+                                                                </div>
+                                                                <div className="text-[10px] text-gray-400 font-medium">
+                                                                    {c.updatedAt ? new Date(c.updatedAt).toLocaleDateString() + ' ' + new Date(c.updatedAt).toLocaleTimeString() : 'Unknown Date'}
+                                                                </div>
+                                                            </div>
+                                                        </button>
+
+                                                        <button
+                                                            onClick={(e) => handleDeleteCourse(c.title, e)}
+                                                            disabled={isDeleting === c.title}
+                                                            className="p-1.5 rounded-md text-gray-400 hover:text-red-600 hover:bg-red-50 opacity-0 group-hover/item:opacity-100 transition-all"
+                                                            title="Delete Course"
+                                                        >
+                                                            {isDeleting === c.title ? (
+                                                                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                                                            ) : (
+                                                                <Trash2 className="w-3.5 h-3.5" />
+                                                            )}
+                                                        </button>
+                                                    </div>
                                                 ))
                                             )}
                                         </div>
@@ -1001,88 +1146,78 @@ export default function BuilderInterface({ files, approvedFiles }: { files: File
                                 onClick={handleSaveCourse}
                                 disabled={isLoading || isSaving}
                                 className={cn(
-                                    "p-2 rounded-lg text-gray-400 bg-white border border-gray-200 hover:border-gray-300 hover:text-green-600 transition-all shadow-sm flex items-center gap-2",
-                                    (isLoading || isSaving) && "animate-pulse"
+                                    "px-3 py-1.5 rounded-lg text-white font-bold text-xs transition-all shadow-md flex items-center gap-2",
+                                    (isSaving && !isLoading) ? "bg-green-600 hover:bg-green-700" :
+                                        (lastSaved && !isSaving) ? "bg-white text-green-600 border border-green-200" :
+                                            "bg-indigo-600 hover:bg-indigo-700"
                                 )}
-                                title="Sync to Cloud (Manual)"
+                                title="Sync to Cloud"
                             >
-                                <Save className="w-4 h-4" />
-                                {isSaving && <span className="text-[10px] font-bold text-gray-400">Saving...</span>}
-                                {!isSaving && lastSaved && <span className="text-[10px] font-bold text-green-500">Saved</span>}
+                                {isSaving ? (
+                                    <>
+                                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                                        <span>Saving...</span>
+                                    </>
+                                ) : (lastSaved) ? (
+                                    <>
+                                        <CheckCircle className="w-3.5 h-3.5" />
+                                        <span>Saved</span>
+                                    </>
+                                ) : (
+                                    <>
+                                        <Save className="w-3.5 h-3.5" />
+                                        <span>Save Changes</span>
+                                    </>
+                                )}
                             </button>
                         </div>
 
                         <div className="h-6 w-px bg-gray-200"></div>
 
                         <button
-                            onClick={handleGenerateSyllabus}
-                            className="bg-green-600 text-white px-4 py-1.8 rounded-lg text-xs font-bold hover:bg-green-700 transition-all shadow-md active:scale-95 flex items-center gap-2"
+                            onClick={handleVerifyAndExport}
+                            disabled={isVerifyingStructure}
+                            className="bg-green-600 text-white px-4 py-1.8 rounded-lg text-xs font-bold hover:bg-green-700 transition-all shadow-md active:scale-95 flex items-center gap-2 disabled:opacity-70 disabled:cursor-wait"
                         >
-                            <FileText className="w-3.5 h-3.5" />
-                            Export Application
+                            {isVerifyingStructure ? (
+                                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                            ) : (
+                                <Archive className="w-3.5 h-3.5" />
+                            )}
+                            {isVerifyingStructure ? 'Verifying...' : 'Export Master ZIP'}
                         </button>
                     </div>
                 </div>
 
                 {/* SaaS Control Panel - State Expansion Operations */}
-                <div className="bg-gray-50 border-b border-gray-200 px-6 py-2 flex items-center justify-between shrink-0 z-10">
+                <div className="bg-white border-b border-gray-200 px-6 py-3 flex items-center justify-between shrink-0 z-10 shadow-sm">
                     <div className="flex items-center gap-4">
-                        <div className="flex items-center gap-2 px-3 py-1 bg-white border border-gray-200 rounded-lg shadow-sm">
-                            <span className="text-[10px] font-black text-gray-500 uppercase tracking-widest">Expansion Mode:</span>
-                            <div className="flex gap-2">
-                                <button className="text-[10px] font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded border border-blue-100 uppercase">National {"->"} {targetState}</button>
-                            </div>
-                        </div>
+
                         <button
                             onClick={handleAutoBuildOutline}
-                            className="text-[10px] font-bold text-white bg-gradient-to-r from-purple-600 to-indigo-600 px-3 py-1.5 rounded-lg hover:shadow-lg transition-all flex items-center gap-2 group border border-purple-400/30"
+                            className="text-xs font-bold text-white bg-gradient-to-r from-violet-600 to-indigo-600 px-4 py-2 rounded-lg hover:shadow-lg hover:from-violet-700 hover:to-indigo-700 transition-all flex items-center gap-2 group border border-violet-500/30 active:scale-95"
                         >
-                            <Zap className="w-3 h-3 fill-white" />
-                            Fast Forward: Auto-Build {targetState}
-                        </button>
-                        <button
-                            onClick={() => {
-                                const req = getRequirementForState(targetState);
-                                if (!req) {
-                                    alert(`Searching National Content for ${targetState} requirements... \n\nFound 3 gaps identified: \n1. Vermont Specific Finance Law\n2. VT License Maintenance\n3. State Audit Procedures`);
-                                    return;
-                                }
-                                alert(`Scanning Requirements for ${targetState} (${req.totalHours} hrs)...\n\nMatched ${courseItems.length}/${req.mandatoryTopics.length} Mandatory Topics.`);
-                            }}
-                            className="text-[10px] font-bold text-gray-700 bg-white border border-gray-200 px-3 py-1.5 rounded-lg hover:border-blue-400 hover:text-blue-600 transition-all flex items-center gap-2 group"
-                        >
-                            <svg className="w-3 h-3 group-hover:animate-pulse" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
-                            Identify {targetState} Gaps
+                            <Zap className="w-4 h-4 fill-white" />
+                            Generate Outline with Gemini
                         </button>
                     </div>
 
-                    <div className="flex items-center gap-4">
-                        <div className="flex items-center gap-2">
-                            <span className="text-[10px] font-bold text-gray-400 uppercase">Batch Operations:</span>
-                            <button
-                                onClick={async () => {
-                                    setIsLoading(true);
-                                    // Simulate Batch Gemini verification
-                                    await new Promise(r => setTimeout(r, 1500));
-                                    setCourseItems(prev => prev.map(item => ({
-                                        ...item,
-                                        verified: { ...item.verified, gemini: true } as any,
-                                        children: item.children?.map(c => ({ ...c, verified: { ...c.verified, gemini: true } as any }))
-                                    })));
-                                    setIsLoading(false);
-                                    alert("Batch Gemini Verification Complete: Caching and saving results to database...");
-                                }}
-                                className="text-[10px] font-bold text-purple-700 bg-purple-50 border border-purple-200 px-3 py-1.5 rounded-lg hover:bg-purple-100 transition-all flex items-center gap-2"
-                            >
-                                <svg className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" /></svg>
-                                Batch API Verify
-                            </button>
-                        </div>
-                        <div className="h-4 w-px bg-gray-300"></div>
-                        <div className="flex items-center gap-2">
-                            <span className="text-[10px] font-bold text-gray-400 uppercase">Audit:</span>
-                            <button className="text-[10px] font-bold text-gray-600 hover:text-black">View Log</button>
-                        </div>
+                    <div className="flex items-center gap-3">
+                        <button
+                            onClick={() => setShowGeminiLogs(true)}
+                            className="px-3 py-1.5 rounded-lg text-xs font-bold text-gray-700 bg-gray-50 border border-gray-200 hover:bg-gray-100 hover:text-indigo-600 flex items-center gap-2 transition-all"
+                        >
+                            <History className="w-3.5 h-3.5" />
+                            View Logs
+                        </button>
+                        <div className="h-4 w-px bg-gray-300 mx-1"></div>
+                        <button
+                            onClick={logout}
+                            className="px-3 py-1.5 rounded-lg text-xs font-bold text-gray-500 hover:bg-red-50 hover:text-red-600 flex items-center gap-2 transition-all"
+                            title="Log Out"
+                        >
+                            <LogOut className="w-3.5 h-3.5" />
+                        </button>
                     </div>
                 </div>
 
@@ -1252,6 +1387,15 @@ export default function BuilderInterface({ files, approvedFiles }: { files: File
                     onCancel={() => setShowSetupModal(false)}
                 />
             )}
+
+            {/* Activity Log Panel */}
+            <ActivityLogPanel
+                isOpen={showGeminiLogs}
+                onClose={() => setShowGeminiLogs(false)}
+                currentUserId={user?.id}
+            />
+
+
 
         </DndContext>
     );

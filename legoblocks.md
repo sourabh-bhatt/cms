@@ -1,0 +1,440 @@
+# Section Files
+
+## Section 1
+- Area Preference in Real Estate.md
+- Economic Characteristics of Land Influencing Its Value.md
+- Economic Characteristics of Real Property Assemblage and Plottage Value.md
+- Economic Stages in Real Estate Growth, Equilibrium, and Decline.md
+- External Obsolescence and Economic Obsolescence in Real Estate.md
+- Impact of Garage Types on Property Value.md
+- Real Estate as an Indicator of Economic Health.md
+- The Federal Reserve System and Its Impact on Real Estate.md
+- The Principle of Conformity in Real Estate.md
+- The Role of Commercial Banks in Real Estate.md
+- Understanding Employment in Real Estate Economic and Social Responsibilities.md
+- Understanding Equity in Real Estate.md
+- Understanding Industrial Real Estate.md
+- Understanding Liquidity and Real Estate.md
+- Understanding Volume in Real Estate.md
+- Unearned Increment in Real Estate.md
+
+## Section 2
+- Assemblage and Plottage Value in Real Estate.md
+- Comparative Market Analysis (CMA) Explained.md
+- Comparative Market Analysis (CMA) in Real Estate.md
+- Impact of Supply and Demand on Real Estate Prices.md
+- Understanding Competition in the Real Estate Market.md
+- Understanding Land Cost Based on Location.md
+- Understanding Potential Gross Income in Rental Properties.md
+- Understanding an Open and Competitive Real Estate Market.md
+- Understanding the Concept of Anticipation in Real Estate.md
+- Understanding the Local Real Estate Market.md
+
+## Section 3
+- Constitutional Limits on Government Power and Property Rights.md
+- Disclosure Requirements for Properties Near Military Air Installations in Virginia.md
+- Easement by Necessity in Property Rights.md
+- Easements Appurtenant in Property Rights.md
+- Easements and Property Rights.md
+- Easements in Gross.md
+- Express Reservation in Property Transactions.md
+- Freehold Estates in Property Rights.md
+- Government Survey Method in Land Surveying.md
+- Joint Tenancy The Four Unities.md
+- Joint Tenancy and Changes in Property Ownership.md
+- Joint Tenancy in Property Ownership.md
+- Justifiable Reliance and Estoppel Defense in Property Rights.md
+- Life Estates in Property Rights.md
+- Life Tenant Responsibilities and Restrictions.md
+- Personal Property Rights in Real Estate.md
+- Prescriptive Easement.md
+- Property Rights Understanding Dower and Curtesy.md
+- Property Rights and the Transfer Between Public and Private Sectors.md
+- Right of First Refusal in Property Rights.md
+- Sole Ownership in Property Rights.md
+- Tenancy in Common Key Concepts in Property Co-Ownership.md
+- Termination of Easements.md
+- Testate vs. Intestate Succession in Property Ownership.md
+- Title by Estoppel Understanding This Legal Principle.md
+- Title by Estoppel in Property Ownership.md
+- Transfer of Title and Property Rights.md
+- Understanding Complete Ownership Rights in Property.md
+- Understanding Condemnation and Property Rights.md
+- Understanding Equitable Title in Property Rights.md
+- Understanding Equitable Title in Real Estate Transactions.md
+- Understanding Estates in Land.md
+- Understanding Fructus Industriales in Property Rights.md
+- Understanding Future Estates in Property Rights.md
+- Understanding Joint Tenancy and the Right of Survivorship.md
+- Understanding Property Rights and Ownership Types in Real Estate.md
+- Understanding Property Rights.md
+- Understanding Pur Autre Vie in Property Rights.md
+- Understanding Real Estate, Real Property, and Land.md
+- Understanding Trusts in Property Rights.md
+- Understanding Wills and Their Role in Estate Planning.md
+- Understanding the Bundle of Rights in Property Ownership.md
+- Understanding the Remainder Estate.md
+- Understanding the Reversion Estate in Property Rights.md
+- Understanding the Servient Estate in Property Rights.md
+- Understanding the Statute of Limitations in Property Rights.md
+
+## Section 4
+- 4.100 Understanding the Parties in a Purchase Agreement.md
+- 4.61 Time Is of the Essence.md
+- 4.65 Option Contracts.md
+- 4.68 Understanding the Statute of Frauds in Lease Surrender Agreements.md
+- 4.69 Understanding Fraud in Real Estate Contracts.md
+- 4.70 Impact of Death or Insanity on Contract Offers and Formed Contracts.md
+- 4.72 Duress in Contract Law.md
+- 4.73 Promissory Estoppel in Contract Law.md
+- 4.74 Understanding Contracts in Real Estate Transactions.md
+- 4.76 Understanding Illegality in Contracts.md
+- 4.77 Election of Remedies in Real Estate Contracts.md
+- 4.78 Understanding Time Is of the Essence in Sales Contracts.md
+- 4.79 Fundamental Elements of a Valid Contract.md
+- 4.84 Understanding Offers with Deadlines.md
+- 4.85 Contract Formation in Real Estate.md
+- 4.87 Fraud in the Factum.md
+- 4.88 Understanding Incompetency and Contract Capacity.md
+- 4.89 Bilateral Contracts in Real Estate.md
+- 4.92 Calculating Monetary Damages in a Breach of Contract.md
+- 4.93 Understanding Reliance in Real Estate Contracts.md
+- 4.96 Understanding Contingencies in Real Estate Purchase Transactions.md
+- 4.97 Understanding Conditions in Contracts.md
+- Avoiding Unauthorized Practice of Law (UPL) in Real Estate Transactions.md
+- Bilateral Contracts in Real Estate.md
+- Conditions and Contingencies in Contracts.md
+- Effect of Death or Incapacity on Offers and Contracts.md
+- Forfeiture of Contract in Real Estate Transactions.md
+- Impossibility in Real Estate Contracts.md
+- Legal Capacity and Contractual Agreements.md
+- Mistakes in Contracts.md
+- Mutual Mistake in Real Estate Contracts.md
+- Non-Legal Insanity and Contract Capacity.md
+- Offers and Option Contracts in Real Estate.md
+- Option Contracts in Real Estate.md
+- Seller Financing and the Land Contract.md
+- Statute of Frauds in Real Estate Transactions.md
+- The Mailbox Rule in Contract Acceptance.md
+- Timing in Real Estate Contracts.md
+- Understanding Conditions in Real Estate Contracts.md
+- Understanding Executory and Executed Contracts in Real Estate.md
+- Understanding Novation in Contracts.md
+- Understanding Unilateral Contracts in Real Estate.md
+- Understanding Unilateral and Bilateral Contracts.md
+- Understanding the Concept of Impossibility in Contracts.md
+- Understanding the Legal Boundaries of Drafting Purchase Agreements.md
+- Understanding the Statute of Frauds in Real Estate Contracts.md
+- Understanding the Time Is of the Essence Clause in Real Estate Contracts.md
+- Unilateral Contracts in Real Estate.md
+
+## Section 5
+- 5.11 Warranty Deeds and Covenants of Title.md
+- 5.12 Bargain and Sale Deed in Property Transactions.md
+- 5.13 The Testimonium Clause in Deeds.md
+- 5.17 Quitclaim Deeds.md
+- 5.18 Seisin in Real Estate.md
+- 5.19 Further Assurances in Property Deeds.md
+- 5.2 Correction Deed in Real Estate.md
+- 5.21 Transferring Property Ownership During Life and After Death.md
+- 5.23 Deeds Roles and Legal Requirements.md
+- 5.24 Express Easements Conveyance and Legal Requirements.md
+- 5.25 Covenant Against Encumbrances in Property Deeds.md
+- 5.27 The Premises Clause in Deeds.md
+- 5.31 The Sheriff's Deed in Real Estate Transactions.md
+- 5.32 Patent Deeds.md
+- 5.5 Sheriff's Deed in Real Estate Transactions.md
+- 5.6 Components of Deeds in Real Estate.md
+- 5.7 Delivery and Acceptance of Deeds in Real Estate.md
+- 5.8 Gift Deeds in Real Estate Transactions.md
+- 5.9 Covenant of Warranty in Real Estate.md
+
+## Section 6
+- Alienation Clause and Due-on-Sale Clause in Mortgages.md
+- Assignment and Novation in Mortgages and Deeds of Trust.md
+- Assumption of Mortgages and Deeds of Trust in Real Estate Transactions.md
+- Blanket Mortgages and Partial Release Clauses.md
+- Buying Property Subject To an Existing Mortgage.md
+- Covenant of Good Repair in Mortgages and Deeds of Trust.md
+- Covenant to Pay Indebtedness.md
+- Covenant to Pay Insurance.md
+- Deed in Lieu of Foreclosure An Alternative to Traditional Foreclosure.md
+- Defeasance Clause in Mortgages and Deeds of Trust.md
+- Handling Excess Proceeds in Foreclosure and Trustee Sales.md
+- Loan Assumptions in Real Estate Financing.md
+- Mortgage Assumption and the Assumption Clause.md
+- Original Buyer Liability in Mortgages.md
+- Private Mortgage Insurance (PMI) in Mortgages and Deeds of Trust.md
+- Understanding Covenants and Clauses in Mortgages and Deeds of Trust.md
+- Understanding Home Equity Loans (6.33).md
+- Understanding Home Equity Loans.md
+- Understanding Interest in Mortgages and Deeds of Trust.md
+- Understanding Junior Mortgages in Real Estate.md
+- Understanding Mortgages in Real Estate.md
+- Understanding Second Mortgages in Real Estate Transactions.md
+- Understanding the Exculpatory Clause in Mortgages and Deeds of Trust.md
+- Understanding the Mortgage Contract in Real Estate.md
+- Understanding the Real Estate Settlement Procedures Act (RESPA).md
+- Understanding the Reduction Certificate in Real Estate Transactions.md
+- Wraparound Mortgage.md
+
+## Section 7
+- Adjustable-Rate Mortgage (ARM).md
+- Amortization.md
+- Assumable and Non-Assumable Mortgages.md
+- Buydown Mortgages Reducing Monthly Payments During High Interest Rates.md
+- Fixed-Rate Mortgage.md
+- Fully Amortized Loan.md
+- Graduated Payment Mortgage (GPM).md
+- Interest Only Mortgages.md
+- Jumbo Loans Non-Conforming Mortgage Loans.md
+- Negative Amortization in Mortgages.md
+- Open-End Mortgages.md
+- Package Mortgage Combined Collateral in Home Loans.md
+- Package Mortgages in Homebuying.md
+- Partially Amortized Loans and Balloon Payments.md
+- Purchase Money Mortgage.md
+- Renegotiable Rate Mortgage An Adjustable Rate Mortgage (ARM).md
+- Reverse Annuity Mortgage (RAM).md
+- Shared Appreciation Mortgage (SAM).md
+
+## Section 8
+- Constructive Eviction Tenant's Right to Vacate Uninhabitable Property.md
+- Covenant of Quiet Enjoyment in Leasing.md
+- Early Termination of Lease Agreements.md
+- Escalator Clause in Leases.md
+- Estate at Sufferance in Leaseholds.md
+- Estate at Will (Tenancy at Will).md
+- Estate for Years Lease.md
+- Eviction and Legal Remedies for Lease Breaches.md
+- Eviction in Lease Agreements.md
+- Graduated Leases and Index Leases in Real Estate.md
+- Gross Leases.md
+- Ground Leases in Real Estate.md
+- Impact of Property Destruction or Condemnation on Lease Agreements.md
+- Impact of Voluntary Sales and Transfers on Leased Real Property.md
+- Landlord and Tenant Rights, Leasehold Estates, and Lease Contracts.md
+- Lease Contract Termination in Property Management.md
+- Lease Rights Exclusive Possession and Landlord Ownership.md
+- Lease Termination Due to Tenant Abandonment.md
+- Lease Types and Termination.md
+- Lease-Purchase Agreements in Real Estate.md
+- Leases in Real Estate (8.42).md
+- Leases in Real Estate.md
+- Lessee's Interest in Leases.md
+- Lessor's Interest in Leases.md
+- Long-Term Leases.md
+- Net Leases.md
+- Non-Freehold Estates (Leasehold Estates).md
+- Option Clause in Leases.md
+- Percentage Lease in Real Estate.md
+- Proprietary Lease in Cooperative Ownership.md
+- Protective Covenants in Commercial Leases.md
+- Protective Covenants in Commercial and Retail Leases.md
+- Restrictive Covenants in Leases (8.2).md
+- Restrictive Covenants in Leases.md
+- Revaluation Lease (Reappraisal Lease).md
+- Short-Term Leases.md
+- Tenancy for Years and Lease Expiration.md
+- The Escalator Clause in Leasing Agreements.md
+- Trade Fixtures in Leased Properties.md
+- Virginia Residential Landlord and Tenant Act Key Concepts for Residential Leases.md
+
+## Section 9
+- Attachment Liens in Real Estate.md
+- Bankruptcy and Real Estate Understanding Rights and Processes.md
+- Covenant to Pay Taxes in Real Estate.md
+- Deficiency Judgment in Foreclosure and Trustee Sales.md
+- Enforcing a Lien Through Legal Proceedings.md
+- Estoppel Certificates in Real Estate Transactions.md
+- Foreclosure and Its Impact on Leases.md
+- Judgment Liens in Real Estate.md
+- Lis Pendens Understanding Its Role in Real Estate Legal Proceedings.md
+- Mechanic's Lien in Real Estate.md
+- Special Assessment Liens in Real Estate.md
+- Tax Liens and Lien Priority in Real Estate.md
+- Understanding Encumbrances in Real Estate.md
+- Understanding General and Specific Liens.md
+- Understanding Lien Priority in Real Estate.md
+- Understanding Liens and Foreclosure in Mortgage Properties.md
+- Understanding Liens and Satisfaction in Real Estate.md
+- Understanding Liens and Their Priority.md
+- Understanding Liens in Real Estate (9.18).md
+- Understanding Liens in Real Estate.md
+- Understanding Liens in Title Theory vs. Lien Theory States.md
+- Understanding Lis Pendens in Real Estate.md
+- Understanding Property Tax Liens.md
+- Understanding the Hierarchy of Liens in Real Estate.md
+- Vendor's Lien in Real Estate Transactions.md
+
+## Section 10
+- Home Ownership Counseling and Lender Responsibilities.md
+- Homesteading and Homestead Exemptions.md
+- The Social Impact of Home Ownership.md
+- Understanding Cooperatives in Real Estate.md
+- Understanding Equity in Home Ownership.md
+- Understanding Home Warranties.md
+- Understanding New Home Warranties.md
+
+## Section 11
+- Involuntary Transfer in Real Property and Title Insurance.md
+- Marketable Title in Real Estate.md
+- Probate and Title Transfer of Real Estate.md
+- Title Insurance Policy in Real Estate.md
+- Title Insurance Protecting Property Title.md
+- Understanding Title Defects in Real Estate Transactions.md
+- Understanding the Real Estate Settlement Procedures Act (RESPA).md
+- Understanding the Title Clause in Real Estate Transactions.md
+
+## Section 12
+- Disintermediation in Investment.md
+- Investment Permanence (Fixity) in Real Estate.md
+- Investment vs. Personal Use in Real Estate.md
+- Leverage in Real Estate Investment.md
+- Net Operating Income (NOI) in Real Estate.md
+- Plottage and Assemblage in Real Estate.md
+- The Role of Insurance Companies in Real Estate Investment.md
+- Understanding Appreciation in Real Estate.md
+- Understanding Effective Gross Income (EGI) in Real Estate.md
+- Understanding Income Properties and Key Financial Metrics.md
+- Understanding Real Estate Owned (REO) Properties.md
+
+## Section 13
+- Assessed Value in Real Estate.md
+- Federal Laws Impacting Real Estate Loans Secured by a Principal Dwelling.md
+- Foreign Investment and Real Property Tax Act (FIRPTA) in U.S. Real Estate Transactions.md
+- IRS Form 1099-S Reporting in Residential Real Estate Transactions.md
+- Like-Kind Exchange in Real Estate.md
+- Physical Description of Property and Its Role in Real Estate Taxes.md
+- Real Estate Settlement Procedures Act (RESPA) and Its Exemptions.md
+- Taxable Income in Real Estate.md
+- Transfer and Recording Taxes in Real Estate Transactions.md
+- Understanding Assessed Value in Real Estate.md
+- Understanding Capital Gains in Real Estate.md
+- Understanding Federal Tax Deductions in Real Estate.md
+- Understanding Property Taxes in Real Estate (13.8).md
+- Understanding Property Taxes in Real Estate.md
+- Understanding Property Taxes.md
+- Understanding Tax Rates in Real Estate.md
+- Understanding Taxation in Real Estate.md
+- Understanding Transfer Taxes in Real Estate Transactions.md
+- Usury Laws in Real Estate.md
+
+## Section 14
+- Applying for a Mortgage Loan Understanding the Uniform Residential Loan Application (FNMA 1003 Form).md
+- Construction Loans in New Construction and Development Projects.md
+- Conventional Loans in Real Estate Financing.md
+- Estimating Monthly Mortgage Payments Using Loan Repayment Factors.md
+- FHA Loans An Overview of Federal Housing Administration Financing.md
+- Financial Institutions in Real Estate Financing.md
+- Government Programs in Real Estate Financing.md
+- Government-Backed Loans in Real Estate Financing.md
+- Honesty and Legal Requirements in Real Estate Advertising.md
+- Intermediation in Real Estate Financing.md
+- Loan Origination in Real Estate Financing.md
+- Loan Servicing in Real Estate Financing.md
+- Mortgage Calculations in Real Estate Financing.md
+- Pre-Qualification in Real Estate Financing.md
+- Qualifying Borrowers and Collateral in Real Estate Lending.md
+- Rate Lock in Real Estate Financing.md
+- Real Estate Appraisals and Federal Regulations.md
+- Real Estate Settlement Procedures Act (RESPA).md
+- Rural Real Estate Financing USDA Loan Programs.md
+- Sale-Leaseback in Real Estate Financing.md
+- Savings and Loan Associations in Real Estate Financing.md
+- Servicing Disclosure Statement in the Loan Application Process.md
+- Special Lending Agreements in Real Estate Finance.md
+- State Programs for Homebuyer Assistance.md
+- The Primary Mortgage Market in Real Estate Financing (14.62).md
+- The Primary Mortgage Market in Real Estate Financing.md
+- The Role of Ginnie Mae in Real Estate Financing.md
+- The Role of Mortgage Bankers in Real Estate Financing.md
+- The Secondary Mortgage Market in Real Estate Financing.md
+- Truth in Lending Act (TILA) and Regulation Z in Real Estate Financing.md
+- Understanding Amortization and Monthly Installment Payments.md
+- Understanding Discount Points in Real Estate Financing (14.34).md
+- Understanding Discount Points in Real Estate Financing.md
+- Understanding Down Payments in Real Estate Financing.md
+- Understanding Equity in Real Estate Financing.md
+- Understanding Escrow Accounts and RESPA Requirements.md
+- Understanding Fannie Mae and Its Role in Real Estate Financing.md
+- Understanding Freddie Mac and Its Role in Real Estate Financing.md
+- Understanding Interest Rates and Interest Amounts in Real Estate Financing.md
+- Understanding Leverage in Real Estate Investment.md
+- Understanding Loan Qualification Down Payment and Financing.md
+- Understanding Loan-to-Value Ratios (LTV).md
+- Understanding Mortgage Brokers and Mortgage Bankers.md
+- Understanding PITI The Four Components of a Mortgage Payment.md
+- Understanding Percentages in Real Estate Financing.md
+- Understanding Principal Lending Agreements and Interest Calculations.md
+- Understanding Real Estate Financing Calculations.md
+- Understanding Real Estate Financing.md
+- Understanding Sales Proceeds and Profit Calculation in Real Estate.md
+- Understanding Seller Financing in Real Estate.md
+- Understanding Subprime Loans in Real Estate Financing.md
+- Understanding Usury in Real Estate Financing.md
+- Understanding the Annual Percentage Rate (APR) in Real Estate Financing.md
+- Understanding the Loan Estimate in Real Estate Financing.md
+- Understanding the Loan Estimate.md
+- Understanding the Loan-to-Value (LTV) Ratio.md
+- Understanding the Loan-to-Value Ratio (LTV) in Mortgage Loans.md
+- Understanding the Pre-Approval Process in Real Estate Financing.md
+- Understanding the Prepayment Clause in Mortgage Agreements.md
+- Understanding the Primary and Secondary Mortgage Markets.md
+- Understanding the Promissory Note in Real Estate Financing.md
+- VA Guaranteed Home Loan Financing Options for Veterans.md
+- Your Home Loan Toolkit Guiding Clients Through Mortgage Acquisition.md
+
+## Section 15
+- Disclosure and Confidentiality in Brokerage Relationships.md
+- Disclosure of Material Facts in Property Transactions.md
+- Duties Owed to Tenant Clients in Residential Transactions.md
+- Exclusive Listing Agreement.md
+- Fiduciary Duties and Responsibilities of a Real Estate Agent.md
+- Ministerial Acts When Representing Buyer Clients.md
+- Roles of Agents in Virginia Real Estate Transactions.md
+- Sources of Agency Law in Brokerage and Agency Contracts.md
+- Termination of Agency Relationships.md
+- Termination of Buyer-Broker Agreements.md
+- Understanding Agency Relationships in Brokerage.md
+- Understanding Customers and Clients in Real Estate Transactions.md
+- Understanding Procuring Cause in Real Estate Transactions.md
+- Understanding Real Estate Compensation.md
+- Understanding the Role of a Special Agent in Brokerage and Agency Contracts.md
+- Understanding the Role of an Independent Contractor in Real Estate Brokerage (15.51).md
+- Understanding the Role of an Independent Contractor in Real Estate Brokerage.md
+- Understanding the Universal Agent in Real Estate.md
+
+## Section 16
+- Common Source Information Companies in Real Estate.md
+- Multiple Listing Service (MLS) in Real Estate.md
+
+## Section 17
+- Home Warranty Plans in Resale Home Transactions.md
+- Role and Authority of a General Agent in Property Management.md
+- Understanding the Role of a General Agent in Real Estate.md
+
+## Section 18
+- Certificate of Title in Real Estate Transactions.md
+- Understanding Notice in Real Estate Transactions.md
+
+## Section 19
+- Closing Taking Possession and Transferring Ownership.md
+- In-Person Closing and Title Transfer.md
+- Prorations in Real Estate Transactions.md
+- Understanding Settlement Costs in Real Estate Transactions.md
+- Understanding the Closing Disclosure in Real Estate Transactions.md
+
+## Section 23
+- Accessibility and Adaptability Standards in New Multi-Family Construction.md
+- Americans with Disabilities Act (ADA) and Accessibility Requirements.md
+- Americans with Disabilities Act (ADA).md
+- Private Membership Clubs and Fair Housing in Virginia.md
+- Reasonable Accommodations in Housing Legislation (23.7).md
+- Reasonable Accommodations in Housing Legislation.md
+- Reasonable Modifications and Accessibility in Housing for Individuals with Disabilities.md
+- Redlining and Fair Lending Practices.md
+- Rights and Responsibilities Regarding Assistance Animals in Housing.md
+- Taking Legal Action Against Housing Discrimination.md
+- The Civil Rights Act of 1866 and Its Impact on Housing Equality.md
+- The HOME Federal Program and Its Impact on Low-Income Homebuyers.md

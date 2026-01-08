@@ -6,6 +6,7 @@ import Resource from '@/lib/models/Resource';
 import Course from '@/lib/models/Course';
 import { revalidatePath } from 'next/cache';
 import { getRequirementForState } from '@/lib/state-requirements';
+import { logActivity, LogUserInfo } from '@/lib/actions/log-actions';
 
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 const GEMINI_API_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent";
@@ -47,7 +48,7 @@ export async function getFileContent(idOrPath: string): Promise<string> {
     }
 }
 
-export async function saveCourse(title: string, data: any) {
+export async function saveCourse(title: string, data: any, user?: LogUserInfo) {
     await dbConnect();
     try {
         await Course.findOneAndUpdate(
@@ -55,6 +56,19 @@ export async function saveCourse(title: string, data: any) {
             { data },
             { upsert: true, new: true }
         );
+
+        // Log the activity if user info provided
+        if (user) {
+            await logActivity({
+                user,
+                category: 'course',
+                action: 'course_saved',
+                description: `Saved course: ${title}`,
+                targetType: 'course',
+                targetName: title
+            });
+        }
+
         return { success: true };
     } catch (error) {
         console.error('Error saving course:', error);
@@ -65,8 +79,11 @@ export async function saveCourse(title: string, data: any) {
 export async function getCourseList() {
     await dbConnect();
     try {
-        const courses = await Course.find({}, 'title').lean();
-        return courses.map((c: any) => c.title);
+        const courses = await Course.find({}, 'title updatedAt').sort({ updatedAt: -1 }).lean();
+        return courses.map((c: any) => ({
+            title: c.title,
+            updatedAt: c.updatedAt
+        }));
     } catch (error) {
         console.error('Error listing courses:', error);
         return [];
@@ -84,10 +101,22 @@ export async function loadCourse(title: string) {
     }
 }
 
-export async function deleteCourse(title: string) {
+export async function deleteCourse(title: string, user?: LogUserInfo) {
     await dbConnect();
     try {
         const res = await Course.findOneAndDelete({ title });
+
+        if (res && user) {
+            await logActivity({
+                user,
+                category: 'course',
+                action: 'course_deleted',
+                description: `Deleted course: ${title}`,
+                targetType: 'course',
+                targetName: title
+            });
+        }
+
         return { success: !!res };
     } catch (error) {
         console.error('Error deleting course:', error);
@@ -101,7 +130,7 @@ export async function readFileContent(idOrPath: string) {
     return { success: content !== 'Error reading file content', content };
 }
 
-export async function uploadResource(formData: FormData) {
+export async function uploadResource(formData: FormData, user?: LogUserInfo) {
     await dbConnect();
     try {
         const file = formData.get('file') as File;
@@ -118,7 +147,7 @@ export async function uploadResource(formData: FormData) {
         let type = 'file';
         if (file.name.toLowerCase().endsWith('.pdf')) type = 'pdf';
 
-        await Resource.create({
+        const resource = await Resource.create({
             title: file.name,
             type,
             state,
@@ -126,6 +155,19 @@ export async function uploadResource(formData: FormData) {
             contentType: file.type || 'application/octet-stream',
             size: buffer.length
         });
+
+        if (user) {
+            await logActivity({
+                user,
+                category: 'resource',
+                action: 'resource_uploaded',
+                description: `Uploaded resource: ${file.name}`,
+                targetType: 'resource',
+                targetId: resource._id.toString(),
+                targetName: file.name,
+                metadata: { state, type, size: buffer.length }
+            });
+        }
 
         revalidatePath('/course-creator');
         return { success: true };
@@ -135,19 +177,32 @@ export async function uploadResource(formData: FormData) {
     }
 }
 
-export async function saveLinkResource(title: string, url: string, state: string) {
+export async function saveLinkResource(title: string, url: string, state: string, user?: LogUserInfo) {
     await dbConnect();
     try {
         if (!title || !url || !state) {
             return { success: false, error: 'Missing title, url or state' };
         }
 
-        await Resource.create({
+        const resource = await Resource.create({
             title,
             type: 'link',
             state,
             url
         });
+
+        if (user) {
+            await logActivity({
+                user,
+                category: 'resource',
+                action: 'link_saved',
+                description: `Saved link: ${title}`,
+                targetType: 'resource',
+                targetId: resource._id.toString(),
+                targetName: title,
+                metadata: { url, state }
+            });
+        }
 
         revalidatePath('/course-creator');
         return { success: true };
