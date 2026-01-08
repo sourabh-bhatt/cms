@@ -5,15 +5,39 @@ import { FileNode } from '@/lib/file-system';
 /**
  * Extract topic names from National Content file nodes
  */
+/**
+ * Extract topic names from National Content file nodes
+ */
 export function extractFilenames(files: FileNode[]): string[] {
-  const names: string[] = [];
+  return extractContextFiles(files).map(f => f.name);
+}
+
+/**
+ * Extract rich context files with metadata
+ */
+export function extractContextFiles(files: FileNode[]): { name: string; wordCount?: number; type?: string }[] {
+  const contextFiles: { name: string; wordCount?: number; type?: string }[] = [];
 
   const recurse = (nodes: FileNode[]) => {
     for (const node of nodes) {
-      if (node.type === 'file' && node.name.endsWith('.md')) {
-        // Remove .md extension and clean up
-        const cleanName = node.name.replace(/\.md$/, '').replace(/\.audited$/, '');
-        names.push(cleanName);
+      if (node.type === 'file') {
+        if (node.name.endsWith('.md')) {
+          // Remove .md extension and clean up
+          const cleanName = node.name.replace(/\.md$/, '').replace(/\.audited$/, '');
+          contextFiles.push({
+            name: cleanName,
+            wordCount: node.metadata?.wordCount,
+            type: 'national'
+          });
+        }
+        // Handle Approved Resources (PDFs, etc.)
+        else if (node.metadata?.contentType === 'application/pdf' || node.name.endsWith('.pdf')) {
+          contextFiles.push({
+            name: node.name,
+            wordCount: node.metadata?.size ? Math.floor(node.metadata.size / 100) : undefined,
+            type: 'resource'
+          });
+        }
       }
       if (node.children) {
         recurse(node.children);
@@ -22,7 +46,7 @@ export function extractFilenames(files: FileNode[]): string[] {
   };
 
   recurse(files);
-  return names;
+  return contextFiles;
 }
 
 /**
@@ -35,11 +59,13 @@ export function buildOutlineContext(
   existingOutline?: OutlineSection[],
   userFeedback?: string
 ): GeminiContext {
-  const filenames = extractFilenames(files);
+  const availableFiles = extractContextFiles(files);
+  const filenames = availableFiles.map(f => f.name);
   const stateReq = getRequirementForState(stateCode);
 
   return {
     filenames,
+    availableFiles,
     stateCode,
     targetHours,
     mandatoryTopics: stateReq?.mandatoryTopics.map(t => t.name),
@@ -75,7 +101,22 @@ export function buildTopicContext(
 /**
  * Generate the system prompt for outline creation
  */
+/**
+ * Generate the system prompt for outline creation
+ */
 export function getOutlineSystemPrompt(context: GeminiContext): string {
+  // Format available files with metadata
+  const fileList = (context.availableFiles || context.filenames.map(name => ({ name, wordCount: undefined, type: undefined }))).map(f => {
+    let details = '';
+    if (f.wordCount) {
+      const approxMinutes = Math.ceil(f.wordCount / 150); // 150 wpm reading speed
+      details = ` (approx. ${f.wordCount} words, ~${approxMinutes} mins)`;
+    } else if (f.type === 'resource') {
+      details = ` (External Resource)`;
+    }
+    return `- "${f.name}"${details}`;
+  }).slice(0, 150).join('\n'); // Increased limit slightly
+
   return `You are a course curriculum designer for real estate pre-licensing education.
 
 TASK: Create a structured course outline for ${context.stateCode} Pre-Licensing Course.
@@ -83,16 +124,17 @@ TASK: Create a structured course outline for ${context.stateCode} Pre-Licensing 
 REQUIREMENTS:
 - Target Hours: ${context.targetHours} hours total
 - Must organize content into logical modules/sections
-- Each topic should reference a source file from National Content
+- Each topic should reference a source file from National Content or Approved Resources
+- **Time Estimation**: Use the provided word counts and duration estimates to accurately calculate the length of each topic. Assume 150 wpm reading speed.
 ${context.mandatoryTopics ? `- Mandatory Topics to Include: ${context.mandatoryTopics.join(', ')}` : ''}
 
-AVAILABLE NATIONAL CONTENT FILES (use these names as sourceFile references):
-${context.filenames.slice(0, 100).join('\n')}
-${context.filenames.length > 100 ? `\n... and ${context.filenames.length - 100} more files` : ''}
+AVAILABLE CONTENT FILES (use these names as sourceFile references):
+${fileList}
+${(context.availableFiles?.length || context.filenames.length) > 150 ? `\n... and more files` : ''}
 
 OUTPUT FORMAT:
 Return a valid JSON object matching this schema.
-CRITICAL: The "sourceFile" field MUST be one of the exact strings from the "AVAILABLE NATIONAL CONTENT FILES" list above. Do not invent filenames. If a suitable file is not found, omit the topic.
+CRITICAL: The "sourceFile" field MUST be one of the exact strings from the "AVAILABLE CONTENT FILES" list above. Do not invent filenames. If a suitable file is not found, omit the topic.
 
 {
   "success": true,

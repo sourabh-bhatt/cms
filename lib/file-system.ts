@@ -11,6 +11,11 @@ export type FileNode = {
   type: 'file' | 'folder';
   path: string;
   children?: FileNode[];
+  metadata?: {
+    wordCount?: number;
+    size?: number;
+    contentType?: string;
+  };
 };
 
 const NATIONAL_CONTENT_PATH = path.join(process.cwd(), 'app/national_content');
@@ -135,32 +140,28 @@ async function migrateResources(dirPath: string) {
 // --- Tree Building Logic ---
 
 function buildTree(items: any[], rootPrefix: string): FileNode[] {
-  // items have 'path' like "national_content/Folder/File.md"
-  // We need to reconstruct the hierarchy.
-  // A naive approach: direct mapping might be hard because we need to next them.
-  // Better: Sort by path length?
-  // Or: Convert to map.
-
   const root: FileNode[] = [];
   const map = new Map<string, FileNode>();
 
-  // Sort by path length to ensure parents exist? 
-  // Actually we stored folders explicitly.
-
   // First, map all items
   items.forEach(item => {
+    // Calculate word count for files
+    let wordCount = 0;
+    if (item.type === 'file' && item.content) {
+      // Simple word count: split by whitespace
+      wordCount = item.content.trim().split(/\s+/).length;
+    }
+
     const node: FileNode = {
       id: item._id.toString(),
       name: item.title,
       type: item.type,
-      path: item.path, // Store the DB path ID (virtual path) or _id? 
-      // Sidebar expects 'path' to be usable for actions.
-      // Let's use the DB ID as the unique identifier for actions,
-      // BUT sidebar might use path for display.
-      // Actually, let's use the item._id as the path for FUTURE actions to identify the DB record.
+      path: item.path,
+      metadata: {
+        wordCount: wordCount
+      },
       children: item.type === 'folder' ? [] : undefined
     };
-    // We use path field for hierarchy logic, but expose _id as path for actions to work seamlessly
     map.set(item.path, node);
   });
 
@@ -171,23 +172,15 @@ function buildTree(items: any[], rootPrefix: string): FileNode[] {
 
     // Parent path: "national_content/A/B" -> "national_content/A"
     const parts = item.path.split('/');
-    if (parts.length > 2) { // "national_content" is root-ish, but parts[0] is national_content
-      // e.g. national_content/folder1
+    if (parts.length > 2) {
       const parentPath = parts.slice(0, -1).join('/');
       const parent = map.get(parentPath);
       if (parent && parent.children) {
         parent.children.push(node);
       } else {
-        // If parent doesn't exist (maybe missed?), add to root?
-        // Or maybe "national_content" itself is a folder?
-        // In migration, we started with children of national_content. 
-        // We didn't create a 'national_content' folder record.
-        // So "national_content/folder1" -> parent "national_content" (missing).
-        // So these are top level.
         root.push(node);
       }
     } else {
-      // "national_content/file.md" -> length 2. Parent is national_content. Top level.
       root.push(node);
     }
   });
@@ -208,12 +201,15 @@ function buildResourceTree(resources: any[]): FileNode[] {
       children: stateResources.map(r => ({
         id: r._id.toString(),
         name: r.title,
-        type: 'file' as const, // logic for sidebar icon?
-        // For PDF, we want the sidebar to know it's a PDF.
-        // Sidebar checks extension: .props.node.name.endsWith('.pdf')
-        // So ensure name has extension if needed, or update sidebar.
-        // Let's ensure name has extension or fake it.
-        path: r._id.toString(), // Use DB ID.
+        type: 'file' as const,
+        path: r._id.toString(),
+        metadata: {
+          size: r.size,
+          contentType: r.contentType,
+          // Estimate word count for now if not available, or just leave it undefined
+          // and let context builder handle it?
+          // For now, let's leave wordCount undefined for resources unless they are text.
+        }
       })).sort((a, b) => a.name.localeCompare(b.name))
     }
   });

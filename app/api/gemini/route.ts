@@ -16,17 +16,22 @@ import {
 } from '@/lib/gemini/context-builder';
 import dbConnect from '@/lib/db';
 import GeminiLog from '@/lib/models/GeminiLog';
+import fs from 'fs';
+import path from 'path';
+import { validateAndFixOutline } from '@/lib/gemini/validator';
+
+// ... (imports remain)
 
 export async function POST(request: NextRequest) {
     const startTime = Date.now();
 
     try {
-        // Connect to database
+        // ... (dbConnect and request parsing remain)
         await dbConnect();
-
         const body: GeminiRequest = await request.json();
         const { action, context, userPrompt, settings } = body;
 
+        // ... (logging remains)
         // Save user action to database
         const userLogDoc = await GeminiLog.create({
             action,
@@ -71,19 +76,39 @@ export async function POST(request: NextRequest) {
                 }, { status: 400 });
         }
 
+
         // Check for API key
         const apiKey = process.env.GEMINI_API_KEY;
 
         let result: OutlineOutput | TopicOutput | FileSelectionOutput;
 
         if (!apiKey) {
-            // DEMO MODE: Return mock data when no API key is set
             console.log('[Gemini API] No API key found - using demo mode');
             result = generateMockResponse(action, context);
         } else {
-            // PRODUCTION MODE: Call actual Gemini API
             result = await callGeminiAPI(apiKey, systemPrompt, userPrompt);
         }
+
+        // --- VALIDATION & EXPORT STEP ---
+        if (action === 'create_outline' && 'outline' in result) {
+            if (context.availableFiles) {
+                // Strict validation against available files and word counts
+                result = validateAndFixOutline(result as OutlineOutput, { availableFiles: context.availableFiles });
+                console.log('[Gemini] Outline validated and fixed times based on word counts.');
+            } else {
+                console.warn('[Gemini] No availableFiles metadata provided for validation.');
+            }
+
+            // EXPORT STRUCTURED OUTPUT
+            try {
+                const exportPath = path.join(process.cwd(), 'generated-outline.json');
+                await fs.promises.writeFile(exportPath, JSON.stringify(result, null, 2));
+                console.log(`[Gemini] Exported structured output to ${exportPath}`);
+            } catch (e) {
+                console.error('[Gemini] Failed to export structured output file', e);
+            }
+        }
+        // --------------------------------
 
         // Save Gemini response to database
         const responseLogDoc = await GeminiLog.create({
@@ -107,14 +132,13 @@ export async function POST(request: NextRequest) {
 
         return NextResponse.json(response);
 
-    } catch (error) {
+    } catch (error) { // ... error handling
         console.error('[Gemini API Error]', error);
 
-        // Try to log error to database
         try {
             await dbConnect();
             await GeminiLog.create({
-                action: 'create_outline',
+                action: 'create_outline', // defaults to create_outline regarding error?
                 type: 'gemini_response',
                 error: error instanceof Error ? error.message : 'Unknown error'
             });

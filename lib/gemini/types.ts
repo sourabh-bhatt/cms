@@ -2,7 +2,8 @@
 
 export interface GeminiContext {
     // File references from National Content
-    filenames: string[];
+    filenames: string[]; // Keep for backward compatibility/simplicity
+    availableFiles?: { name: string; wordCount?: number; type?: string }[]; // Richer context
 
     // State-specific requirements
     stateCode: string;

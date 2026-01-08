@@ -44,7 +44,7 @@ import { getRequirementForState } from '@/lib/state-requirements';
 import { ActivityLogPanel } from '@/components/ActivityLogPanel';
 import { useAuth } from '@/components/auth/AuthProvider';
 import { GeminiLogEntry, OutlineSection } from '@/lib/gemini/types';
-import { extractFilenames } from '@/lib/gemini/context-builder';
+import { extractFilenames, extractContextFiles } from '@/lib/gemini/context-builder';
 
 const dropAnimation: DropAnimation = {
     sideEffects: defaultDropAnimationSideEffects({
@@ -674,11 +674,11 @@ export default function BuilderInterface({ files, approvedFiles }: { files: File
         setIsGenerating(true);
         try {
             // 1. Prepare Context (National + Approved Files)
-            const allFiles = [...files, ...approvedFiles];
-            const filenames = [
-                ...extractFilenames(files),
-                ...extractFilenames(approvedFiles)
+            const availableFiles = [
+                ...extractContextFiles(files),
+                ...extractContextFiles(approvedFiles)
             ];
+            const filenames = availableFiles.map(f => f.name);
 
             // 2. Call Gemini
             const response = await fetch('/api/gemini', {
@@ -688,6 +688,7 @@ export default function BuilderInterface({ files, approvedFiles }: { files: File
                     action: 'create_outline', // Direct creation, skipping selection step as user wants fast-forward
                     context: {
                         filenames,
+                        availableFiles,
                         stateCode: targetState,
                         targetHours: targetHours,
                         mandatoryTopics: getRequirementForState(targetState)?.mandatoryTopics.map(t => t.name)
